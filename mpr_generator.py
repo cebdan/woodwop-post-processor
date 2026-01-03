@@ -539,6 +539,7 @@ def generate_mpr_content(z_safe=20.0):
     # CRITICAL: Clean strings before joining to prevent CR CR LF sequences
     # Remove ALL \r and \n characters from ENTIRE string (not just from end!)
     # This prevents \r (anywhere in string) + \r\n (from join) = \r\r\n (CR CR LF)
+    # IMPORTANT: Preserve empty strings (they are intentional separators between sections)
     cleaned_output = []
     for item in output_strs:
         # Convert to string if needed
@@ -547,10 +548,12 @@ def generate_mpr_content(z_safe=20.0):
         
         # Remove ALL \r and \n from ENTIRE string using replace()
         # This is more aggressive than rstrip() and catches \r anywhere
-        cleaned = item.replace('\r', '').replace('\n', '').strip()
+        # Do NOT use strip() here - we want to preserve empty strings
+        cleaned = item.replace('\r', '').replace('\n', '')
         
-        # Skip completely empty strings (they create double CRLF)
-        if cleaned:
+        # Preserve empty strings (they are intentional separators)
+        # Only skip strings that are empty after removing whitespace
+        if cleaned.strip() or cleaned == '':
             cleaned_output.append(cleaned)
     
     # CRITICAL: Ensure we have strings to join after cleaning
@@ -573,8 +576,9 @@ def generate_mpr_content(z_safe=20.0):
         cleaned_fallback = []
         for item in output_strs:
             # Remove ALL \r and \n from ENTIRE string using replace()
-            cleaned = str(item).replace('\r', '').replace('\n', '').strip()
-            if cleaned:
+            # Preserve empty strings (they are intentional separators)
+            cleaned = str(item).replace('\r', '').replace('\n', '')
+            if cleaned.strip() or cleaned == '':
                 cleaned_fallback.append(cleaned)
         result = '\r\n'.join(cleaned_fallback)
     
