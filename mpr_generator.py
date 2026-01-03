@@ -532,20 +532,20 @@ def generate_mpr_content(z_safe=20.0):
         return minimal_mpr
     
     # CRITICAL: Clean strings before joining to prevent CR CR LF sequences
-    # Remove ALL trailing line endings (\r, \n, \r\n) and whitespace from each string
-    # This prevents \r (from string) + \r\n (from join) = \r\r\n (CR CR LF)
+    # Remove ALL \r and \n characters from ENTIRE string (not just from end!)
+    # This prevents \r (anywhere in string) + \r\n (from join) = \r\r\n (CR CR LF)
     cleaned_output = []
     for item in output_strs:
         # Convert to string if needed
         if not isinstance(item, str):
             item = str(item)
         
-        # Remove ALL possible line endings: \r, \n, \r\n, and whitespace
-        # This is CRITICAL to prevent CR CR LF sequences
-        cleaned = item.rstrip(' \t\r\n')
+        # Remove ALL \r and \n from ENTIRE string using replace()
+        # This is more aggressive than rstrip() and catches \r anywhere
+        cleaned = item.replace('\r', '').replace('\n', '').strip()
         
         # Skip completely empty strings (they create double CRLF)
-        if cleaned != '':
+        if cleaned:
             cleaned_output.append(cleaned)
     
     # CRITICAL: Ensure we have strings to join after cleaning
