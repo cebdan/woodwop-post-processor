@@ -567,8 +567,9 @@ def generate_mpr_content(z_safe=20.0):
         # Fallback: convert everything to string and clean
         cleaned_fallback = []
         for item in output_strs:
-            cleaned = str(item).rstrip(' \t\r\n')
-            if cleaned != '':
+            # Remove ALL \r and \n from ENTIRE string using replace()
+            cleaned = str(item).replace('\r', '').replace('\n', '').strip()
+            if cleaned:
                 cleaned_fallback.append(cleaned)
         result = '\r\n'.join(cleaned_fallback)
     
@@ -598,7 +599,8 @@ def generate_mpr_content(z_safe=20.0):
         print(f"[WoodWOP CRITICAL ERROR] result value (first 500 chars): {str(result)[:500]}")
         # Force conversion
         if isinstance(result, list):
-            cleaned_list = [str(item).rstrip('\r\n') for item in result if str(item).strip()]
+            # Remove ALL \r and \n from ENTIRE string using replace()
+            cleaned_list = [str(item).replace('\r', '').replace('\n', '').strip() for item in result if str(item).strip()]
             result = '\r\n'.join(cleaned_list)
         else:
             result = str(result) if result else ""
