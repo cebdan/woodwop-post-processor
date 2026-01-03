@@ -294,13 +294,81 @@ def export(objectslist, filename, argstring):
         except Exception as e:
             print(f"[WoodWOP DEBUG] Could not get dimensions from Stock: {e}")
     
+    # Second priority: Try to get dimensions from Job.Model (bounding box of actual part)
+    if job and (config.WORKPIECE_LENGTH is None or config.WORKPIECE_WIDTH is None or config.WORKPIECE_THICKNESS is None):
+        if hasattr(job, 'Model') and job.Model:
+            try:
+                model_obj = job.Model
+                bbox = None
+                
+                # Try to get bounding box from Model
+                if hasattr(model_obj, 'Shape') and hasattr(model_obj.Shape, 'BoundBox'):
+                    bbox = model_obj.Shape.BoundBox
+                elif hasattr(model_obj, 'BoundBox'):
+                    bbox = model_obj.BoundBox
+                elif isinstance(model_obj, (list, tuple)) and len(model_obj) > 0:
+                    # Model might be a list of objects
+                    first_obj = model_obj[0]
+                    if hasattr(first_obj, 'Shape') and hasattr(first_obj.Shape, 'BoundBox'):
+                        bbox = first_obj.Shape.BoundBox
+                    elif hasattr(first_obj, 'BoundBox'):
+                        bbox = first_obj.BoundBox
+                
+                if bbox:
+                    if config.WORKPIECE_LENGTH is None:
+                        config.WORKPIECE_LENGTH = bbox.XLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece length from Model: {config.WORKPIECE_LENGTH:.3f} mm")
+                    if config.WORKPIECE_WIDTH is None:
+                        config.WORKPIECE_WIDTH = bbox.YLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece width from Model: {config.WORKPIECE_WIDTH:.3f} mm")
+                    if config.WORKPIECE_THICKNESS is None:
+                        config.WORKPIECE_THICKNESS = bbox.ZLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece thickness from Model: {config.WORKPIECE_THICKNESS:.3f} mm")
+            except Exception as e:
+                print(f"[WoodWOP DEBUG] Could not get dimensions from Model: {e}")
+    
+    # Third priority: Try to get dimensions from Job.Base (bounding box)
+    if job and (config.WORKPIECE_LENGTH is None or config.WORKPIECE_WIDTH is None or config.WORKPIECE_THICKNESS is None):
+        if hasattr(job, 'Base') and job.Base:
+            try:
+                base_obj = None
+                if isinstance(job.Base, (list, tuple)) and len(job.Base) > 0:
+                    base_obj = job.Base[0]
+                elif hasattr(job.Base, 'Shape'):
+                    base_obj = job.Base
+                elif hasattr(job.Base, 'Name'):
+                    try:
+                        import FreeCAD
+                        doc = FreeCAD.ActiveDocument
+                        if doc:
+                            base_obj = doc.getObject(job.Base.Name)
+                    except:
+                        pass
+                
+                if base_obj and hasattr(base_obj, 'Shape') and hasattr(base_obj.Shape, 'BoundBox'):
+                    bbox = base_obj.Shape.BoundBox
+                    if config.WORKPIECE_LENGTH is None:
+                        config.WORKPIECE_LENGTH = bbox.XLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece length from Base: {config.WORKPIECE_LENGTH:.3f} mm")
+                    if config.WORKPIECE_WIDTH is None:
+                        config.WORKPIECE_WIDTH = bbox.YLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece width from Base: {config.WORKPIECE_WIDTH:.3f} mm")
+                    if config.WORKPIECE_THICKNESS is None:
+                        config.WORKPIECE_THICKNESS = bbox.ZLength
+                        print(f"[WoodWOP DEBUG] Detected workpiece thickness from Base: {config.WORKPIECE_THICKNESS:.3f} mm")
+            except Exception as e:
+                print(f"[WoodWOP DEBUG] Could not get dimensions from Base: {e}")
+    
     # Set defaults if still None
     if config.WORKPIECE_LENGTH is None:
         config.WORKPIECE_LENGTH = 800.0
+        print(f"[WoodWOP DEBUG] Using default workpiece length: {config.WORKPIECE_LENGTH:.3f} mm")
     if config.WORKPIECE_WIDTH is None:
         config.WORKPIECE_WIDTH = 600.0
+        print(f"[WoodWOP DEBUG] Using default workpiece width: {config.WORKPIECE_WIDTH:.3f} mm")
     if config.WORKPIECE_THICKNESS is None:
         config.WORKPIECE_THICKNESS = 20.0
+        print(f"[WoodWOP DEBUG] Using default workpiece thickness: {config.WORKPIECE_THICKNESS:.3f} mm")
     
     # Check Work Coordinate Systems (Fixtures) from Job
     if job and hasattr(job, 'Fixtures') and job.Fixtures:
