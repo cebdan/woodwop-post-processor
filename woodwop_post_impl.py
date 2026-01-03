@@ -338,10 +338,11 @@ def export(objectslist, filename, argstring):
                     base_obj = job.Base
                 elif hasattr(job.Base, 'Name'):
                     try:
-                        import FreeCAD
-                        doc = FreeCAD.ActiveDocument
-                        if doc:
-                            base_obj = doc.getObject(job.Base.Name)
+                        # Use global FreeCAD imported at module level
+                        if FreeCAD:
+                            doc = FreeCAD.ActiveDocument
+                            if doc:
+                                base_obj = doc.getObject(job.Base.Name)
                     except:
                         pass
                 
