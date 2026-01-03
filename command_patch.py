@@ -154,11 +154,24 @@ def _create_patched_method(original_method):
                             if selected_file:
                                 # User selected a file - write it
                                 filename = selected_file
-                                # CRITICAL: Use binary mode to prevent Python from converting \n to \r\n
-                                # newline="\r\n" causes Python to replace \n with \r\n, resulting in \r\r\n
-                                # Binary mode writes data exactly as-is without any line ending conversion
-                                with open(filename, "wb") as f:
-                                    f.write(gcode.encode("cp1252", errors="replace"))
+                                
+                                # Try to use file_writer module if available (preferred method)
+                                try:
+                                    from . import file_writer
+                                    file_writer.write_mpr_file(filename, gcode)
+                                except ImportError:
+                                    # Fallback: direct binary write
+                                    # CRITICAL: Use binary mode to prevent Python from converting \n to \r\n
+                                    # newline="\r\n" causes Python to replace \n with \r\n, resulting in \r\r\n
+                                    # Binary mode writes data exactly as-is without any line ending conversion
+                                    with open(filename, "wb") as f:
+                                        f.write(gcode.encode("cp1252", errors="replace"))
+                                except Exception as e:
+                                    if FreeCAD:
+                                        FreeCAD.Console.PrintError(
+                                            f"WoodWOP: Failed to write MPR file: {e}\n"
+                                        )
+                                    raise
                                 
                                 if FreeCAD:
                                     FreeCAD.Console.PrintMessage(f"File written to {filename}\n")
