@@ -5,6 +5,7 @@ Handles extraction of contours and operations from FreeCAD Path commands.
 
 import math
 from . import config
+from . import utils
 
 # Try to import FreeCAD Path utilities
 try:
