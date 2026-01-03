@@ -25,6 +25,9 @@ def extract_contour_from_path(obj):
         tuple: (elements, start_pos) where elements is a list of contour elements
                and start_pos is (x, y, z) tuple
     """
+    # Log USE_G0 flag value at start of extraction
+    utils.debug_log(f"[WoodWOP DEBUG] extract_contour_from_path(): USE_G0 = {config.USE_G0}")
+    
     elements = []
     current_x = 0.0
     current_y = 0.0
@@ -94,28 +97,43 @@ def extract_contour_from_path(obj):
                 current_z = z
                 continue
             
-            # If USE_G0 is False, skip G0 chains at start/end of trajectory
-            if not config.USE_G0:
-                # Skip G0 before first working element
-                if first_working_idx is not None and idx < first_working_idx:
-                    utils.debug_log(f"[WoodWOP DEBUG] Skipping G0 at index {idx} (before first working element)")
-                    # Update position only (no element added)
-                    current_x = x
-                    current_y = y
-                    current_z = z
-                    continue
-                # Skip G0 after last working element
-                if last_working_idx is not None and idx > last_working_idx:
-                    utils.debug_log(f"[WoodWOP DEBUG] Skipping G0 at index {idx} (after last working element)")
-                    # Update position only (no element added)
-                    current_x = x
-                    current_y = y
-                    current_z = z
-                    continue
-            else:
-                utils.debug_log(f"[WoodWOP DEBUG] Processing G0 at index {idx} as G1 (USE_G0=True)")
+            # CRITICAL: If USE_G0 is True, process ALL G0 as G1 (linear moves)
+            if config.USE_G0:
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1 (linear move)")
+                # Process G0 as G1 (linear move) - create line element
+                line_elem = {
+                    'type': 'KL',  # Line
+                    'x': x,
+                    'y': y,
+                    'z': z,  # Always include Z coordinate
+                    'move_type': 'G0'  # Store original movement type for analysis
+                }
+                elements.append(line_elem)
+                current_x = x
+                current_y = y
+                current_z = z
+                continue  # Skip rest of G0 processing logic
             
-            # Process G0 as G1 (linear move) - either USE_G0=True or G0 is between working elements
+            # If USE_G0 is False, skip G0 chains at start/end of trajectory
+            # Skip G0 before first working element
+            if first_working_idx is not None and idx < first_working_idx:
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (before first working element)")
+                # Update position only (no element added)
+                current_x = x
+                current_y = y
+                current_z = z
+                continue
+            # Skip G0 after last working element
+            if last_working_idx is not None and idx > last_working_idx:
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (after last working element)")
+                # Update position only (no element added)
+                current_x = x
+                current_y = y
+                current_z = z
+                continue
+            
+            # Process G0 as G1 (linear move) - G0 is between working elements (USE_G0=False but between G1/G2/G3)
+            utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
             line_elem = {
                 'type': 'KL',  # Line
                 'x': x,
