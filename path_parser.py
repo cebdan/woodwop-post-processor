@@ -26,6 +26,7 @@ def extract_contour_from_path(obj):
                and start_pos is (x, y, z) tuple
     """
     # Log USE_G0 flag value at start of extraction
+    print(f"[WoodWOP] extract_contour_from_path(): USE_G0 = {config.USE_G0}")
     utils.debug_log(f"[WoodWOP DEBUG] extract_contour_from_path(): USE_G0 = {config.USE_G0}")
     
     elements = []
@@ -63,8 +64,10 @@ def extract_contour_from_path(obj):
                 if first_working_idx is None:
                     first_working_idx = idx
                 last_working_idx = idx
+        print(f"[WoodWOP] USE_G0=False: first_working_idx={first_working_idx}, last_working_idx={last_working_idx}")
         utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: first_working_idx={first_working_idx}, last_working_idx={last_working_idx}")
     else:
+        print(f"[WoodWOP] USE_G0=True: All G0 commands will be processed as G1 (linear moves)")
         utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: All G0 commands will be processed as G1 (linear moves)")
 
     # Second pass: process commands
@@ -99,6 +102,7 @@ def extract_contour_from_path(obj):
             
             # CRITICAL: If USE_G0 is True, process ALL G0 as G1 (linear moves)
             if config.USE_G0:
+                print(f"[WoodWOP] USE_G0=True: Processing G0 at index {idx} as G1 (linear move)")
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1 (linear move)")
                 # Process G0 as G1 (linear move) - create line element
                 line_elem = {
@@ -109,6 +113,7 @@ def extract_contour_from_path(obj):
                     'move_type': 'G0'  # Store original movement type for analysis
                 }
                 elements.append(line_elem)
+                print(f"[WoodWOP] Added G0 element (USE_G0=True): X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
                 utils.debug_log(f"[WoodWOP DEBUG] Added G0 element (USE_G0=True): X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
                 current_x = x
                 current_y = y
@@ -137,9 +142,11 @@ def extract_contour_from_path(obj):
                     current_z = z
                     continue
                 # G0 is between working elements - process as G1
+                print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
             else:
                 # No working elements - process all G0 as G1
+                print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
             
             # Process G0 as G1 (linear move) - create line element
@@ -151,6 +158,7 @@ def extract_contour_from_path(obj):
                 'move_type': 'G0'  # Store original movement type for analysis
             }
             elements.append(line_elem)
+            print(f"[WoodWOP] Added G0 element: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
             utils.debug_log(f"[WoodWOP DEBUG] Added G0 element: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
             current_x = x
             current_y = y
@@ -272,6 +280,7 @@ def extract_contour_from_path(obj):
     
     # Debug: Count G0 elements
     g0_count = sum(1 for elem in elements if elem.get('move_type') == 'G0')
+    print(f"[WoodWOP] extract_contour_from_path() completed: total elements={len(elements)}, G0 elements={g0_count}, USE_G0={config.USE_G0}")
     utils.debug_log(f"[WoodWOP DEBUG] extract_contour_from_path() completed: total elements={len(elements)}, G0 elements={g0_count}, USE_G0={config.USE_G0}")
     
     return elements, start_pos
