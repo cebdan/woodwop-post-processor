@@ -109,6 +109,7 @@ def extract_contour_from_path(obj):
                     'move_type': 'G0'  # Store original movement type for analysis
                 }
                 elements.append(line_elem)
+                utils.debug_log(f"[WoodWOP DEBUG] Added G0 element (USE_G0=True): X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
                 current_x = x
                 current_y = y
                 current_z = z
@@ -140,6 +141,8 @@ def extract_contour_from_path(obj):
             else:
                 # No working elements - process all G0 as G1
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
+            
+            # Process G0 as G1 (linear move) - create line element
             line_elem = {
                 'type': 'KL',  # Line
                 'x': x,
@@ -148,6 +151,7 @@ def extract_contour_from_path(obj):
                 'move_type': 'G0'  # Store original movement type for analysis
             }
             elements.append(line_elem)
+            utils.debug_log(f"[WoodWOP DEBUG] Added G0 element: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
             current_x = x
             current_y = y
             current_z = z
