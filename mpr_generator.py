@@ -592,6 +592,7 @@ def generate_mpr_content(z_safe=20.0):
         result += '\r\n'
     
     # Use file_writer to clean content (ensures proper CRLF and removes any remaining issues)
+    # NOTE: clean_mpr_content preserves empty lines between sections
     if HAS_FILE_WRITER:
         try:
             result = file_writer.clean_mpr_content(result)

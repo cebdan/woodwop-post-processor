@@ -47,10 +47,11 @@ def clean_mpr_content(content):
         # Remove trailing whitespace
         cleaned_line = line.rstrip(' \t')
         
-        # Skip completely empty lines (they create double CRLF)
+        # Preserve empty lines (they are intentional separators between sections)
+        # Only skip empty lines if previous line was also empty (to prevent triple+ empty lines)
         if cleaned_line == '':
-            # Only add empty line if previous line was not empty
-            if cleaned_lines and cleaned_lines[-1] != '':
+            # Add empty line if previous line was not empty (preserve single empty lines)
+            if not cleaned_lines or cleaned_lines[-1] != '':
                 cleaned_lines.append('')
         else:
             cleaned_lines.append(cleaned_line)
