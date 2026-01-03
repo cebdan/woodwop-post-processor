@@ -113,6 +113,7 @@ def parse_arguments(argstring):
     print(f"[WoodWOP]   ENABLE_VERBOSE_LOGGING = {config.ENABLE_VERBOSE_LOGGING}")
     print(f"[WoodWOP]   ENABLE_JOB_REPORT = {config.ENABLE_JOB_REPORT}")
     print(f"[WoodWOP]   ENABLE_PATH_COMMANDS_EXPORT = {config.ENABLE_PATH_COMMANDS_EXPORT}")
+    print(f"[WoodWOP]   USE_G0 = {config.USE_G0}")
     
     return {}
 

@@ -59,6 +59,9 @@ def extract_contour_from_path(obj):
                 if first_working_idx is None:
                     first_working_idx = idx
                 last_working_idx = idx
+        utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: first_working_idx={first_working_idx}, last_working_idx={last_working_idx}")
+    else:
+        utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: All G0 commands will be processed as G1 (linear moves)")
 
     # Second pass: process commands
     for idx, cmd in enumerate(path_commands):
@@ -94,6 +97,7 @@ def extract_contour_from_path(obj):
             if not config.USE_G0:
                 # Skip G0 before first working element
                 if first_working_idx is not None and idx < first_working_idx:
+                    utils.debug_log(f"[WoodWOP DEBUG] Skipping G0 at index {idx} (before first working element)")
                     # Update position only (no element added)
                     current_x = x
                     current_y = y
@@ -101,11 +105,14 @@ def extract_contour_from_path(obj):
                     continue
                 # Skip G0 after last working element
                 if last_working_idx is not None and idx > last_working_idx:
+                    utils.debug_log(f"[WoodWOP DEBUG] Skipping G0 at index {idx} (after last working element)")
                     # Update position only (no element added)
                     current_x = x
                     current_y = y
                     current_z = z
                     continue
+            else:
+                utils.debug_log(f"[WoodWOP DEBUG] Processing G0 at index {idx} as G1 (USE_G0=True)")
             
             # Process G0 as G1 (linear move) - either USE_G0=True or G0 is between working elements
             line_elem = {
