@@ -99,19 +99,20 @@ def generate_mpr_content(z_safe=20.0):
     output.append('INFO4=""')
     output.append('INFO5=""')
     # _BSX, _BSY, _BSZ are base dimensions (workpiece dimensions)
-    output.append(f'_BSX={utils.fmt(config.WORKPIECE_LENGTH)}')
-    output.append(f'_BSY={utils.fmt(config.WORKPIECE_WIDTH)}')
-    output.append(f'_BSZ={utils.fmt(config.WORKPIECE_THICKNESS)}')
+    # MPR header variables require 6 decimal places
+    output.append(f'_BSX={utils.fmt6(config.WORKPIECE_LENGTH)}')
+    output.append(f'_BSY={utils.fmt6(config.WORKPIECE_WIDTH)}')
+    output.append(f'_BSZ={utils.fmt6(config.WORKPIECE_THICKNESS)}')
     # _FNX, _FNY are front offsets (left and front offsets = l_off and f_off)
-    output.append(f'_FNX={utils.fmt(config.STOCK_EXTENT_X_NEG)}')
-    output.append(f'_FNY={utils.fmt(config.STOCK_EXTENT_Y_NEG)}')
+    output.append(f'_FNX={utils.fmt6(config.STOCK_EXTENT_X_NEG)}')
+    output.append(f'_FNY={utils.fmt6(config.STOCK_EXTENT_Y_NEG)}')
     # _RNX, _RNY, _RNZ are program offsets
-    output.append(f'_RNX={utils.fmt(config.PROGRAM_OFFSET_X)}')
-    output.append(f'_RNY={utils.fmt(config.PROGRAM_OFFSET_Y)}')
-    output.append(f'_RNZ={utils.fmt(config.PROGRAM_OFFSET_Z)}')
+    output.append(f'_RNX={utils.fmt6(config.PROGRAM_OFFSET_X)}')
+    output.append(f'_RNY={utils.fmt6(config.PROGRAM_OFFSET_Y)}')
+    output.append(f'_RNZ={utils.fmt6(config.PROGRAM_OFFSET_Z)}')
     # _RX and _RY are total stock dimensions: l_off + l + r_oz and f_off + w + b_oz
-    output.append(f'_RX={utils.fmt(config.STOCK_EXTENT_X_NEG + config.WORKPIECE_LENGTH + config.STOCK_EXTENT_X_POS)}')
-    output.append(f'_RY={utils.fmt(config.STOCK_EXTENT_Y_NEG + config.WORKPIECE_WIDTH + config.STOCK_EXTENT_Y_POS)}')
+    output.append(f'_RX={utils.fmt6(config.STOCK_EXTENT_X_NEG + config.WORKPIECE_LENGTH + config.STOCK_EXTENT_X_POS)}')
+    output.append(f'_RY={utils.fmt6(config.STOCK_EXTENT_Y_NEG + config.WORKPIECE_WIDTH + config.STOCK_EXTENT_Y_POS)}')
     output.append('')
 
     # Contour elements section
@@ -320,6 +321,7 @@ def generate_mpr_content(z_safe=20.0):
         output.append('')
 
     # Variables and workpiece section
+    # Variables in [001 section use standard precision (3 decimal places)
     output.append('[001')
     output.append(f'l="{utils.fmt(config.WORKPIECE_LENGTH)}"')
     if config.OUTPUT_COMMENTS:
