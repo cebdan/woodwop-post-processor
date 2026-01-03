@@ -115,25 +115,31 @@ def extract_contour_from_path(obj):
                 continue  # Skip rest of G0 processing logic
             
             # If USE_G0 is False, skip G0 chains at start/end of trajectory
-            # Skip G0 before first working element
-            if first_working_idx is not None and idx < first_working_idx:
-                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (before first working element)")
-                # Update position only (no element added)
-                current_x = x
-                current_y = y
-                current_z = z
-                continue
-            # Skip G0 after last working element
-            if last_working_idx is not None and idx > last_working_idx:
-                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (after last working element)")
-                # Update position only (no element added)
-                current_x = x
-                current_y = y
-                current_z = z
-                continue
-            
-            # Process G0 as G1 (linear move) - G0 is between working elements (USE_G0=False but between G1/G2/G3)
-            utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
+            # But only if there are working elements (G1/G2/G3)
+            # If there are no working elements, process all G0 as G1
+            if first_working_idx is not None or last_working_idx is not None:
+                # There are working elements - skip G0 at start/end
+                # Skip G0 before first working element
+                if first_working_idx is not None and idx < first_working_idx:
+                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (before first working element)")
+                    # Update position only (no element added)
+                    current_x = x
+                    current_y = y
+                    current_z = z
+                    continue
+                # Skip G0 after last working element
+                if last_working_idx is not None and idx > last_working_idx:
+                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (after last working element)")
+                    # Update position only (no element added)
+                    current_x = x
+                    current_y = y
+                    current_z = z
+                    continue
+                # G0 is between working elements - process as G1
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
+            else:
+                # No working elements - process all G0 as G1
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
             line_elem = {
                 'type': 'KL',  # Line
                 'x': x,
