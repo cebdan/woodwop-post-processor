@@ -471,6 +471,9 @@ def generate_mpr_content(z_safe=20.0):
             output.append('')
 
     # End of file
+    # Add empty line before ! if there are operations
+    if config.operations:
+        output.append('')
     output.append('!')
 
     # Save processing analysis file if enabled
