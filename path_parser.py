@@ -269,6 +269,11 @@ def extract_contour_from_path(obj):
     start_pos = (start_x if start_x is not None else 0.0,
                  start_y if start_y is not None else 0.0,
                  start_z if start_z is not None else 0.0)
+    
+    # Debug: Count G0 elements
+    g0_count = sum(1 for elem in elements if elem.get('move_type') == 'G0')
+    utils.debug_log(f"[WoodWOP DEBUG] extract_contour_from_path() completed: total elements={len(elements)}, G0 elements={g0_count}, USE_G0={config.USE_G0}")
+    
     return elements, start_pos
 
 
