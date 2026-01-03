@@ -8,6 +8,13 @@ from . import config
 from . import utils
 from . import geometry
 
+# Try to import file_writer for content cleaning
+try:
+    from . import file_writer
+    HAS_FILE_WRITER = True
+except ImportError:
+    HAS_FILE_WRITER = False
+
 # This module will be gradually refactored from the original generate_mpr_content function
 # For now, it imports from the original file for backward compatibility
 
@@ -524,17 +531,63 @@ def generate_mpr_content(z_safe=20.0):
         minimal_mpr = '[H\r\nVERSION="4.0 Alpha"\r\n]H\r\n[001\r\nz_safe=20.0\r\n]001\r\n!'
         return minimal_mpr
     
-    # Join all strings with CRLF
+    # CRITICAL: Clean strings before joining to prevent CR CR LF sequences
+    # Remove ALL trailing line endings (\r, \n, \r\n) and whitespace from each string
+    # This prevents \r (from string) + \r\n (from join) = \r\r\n (CR CR LF)
+    cleaned_output = []
+    for item in output_strs:
+        # Convert to string if needed
+        if not isinstance(item, str):
+            item = str(item)
+        
+        # Remove ALL possible line endings: \r, \n, \r\n, and whitespace
+        # This is CRITICAL to prevent CR CR LF sequences
+        cleaned = item.rstrip(' \t\r\n')
+        
+        # Skip completely empty strings (they create double CRLF)
+        if cleaned != '':
+            cleaned_output.append(cleaned)
+    
+    # CRITICAL: Ensure we have strings to join after cleaning
+    if not cleaned_output:
+        print(f"[WoodWOP WARNING] cleaned_output is empty, using minimal MPR")
+        minimal_mpr = '[H\r\nVERSION="4.0 Alpha"\r\n]H\r\n[001\r\nz_safe=20.0\r\n]001\r\n!'
+        return minimal_mpr
+    
+    # Join all cleaned strings with CRLF (single CRLF between lines)
+    # Now we're sure that strings don't have trailing \r or \n
     try:
-        result = '\r\n'.join(output_strs)
+        result = '\r\n'.join(cleaned_output)
     except Exception as e:
-        print(f"[WoodWOP CRITICAL ERROR] Failed to join output_strs: {e}")
-        print(f"[WoodWOP CRITICAL ERROR] output_strs type: {type(output_strs)}")
-        print(f"[WoodWOP CRITICAL ERROR] output_strs length: {len(output_strs)}")
-        if output_strs:
-            print(f"[WoodWOP CRITICAL ERROR] First item type: {type(output_strs[0])}")
-        # Fallback: convert everything to string
-        result = '\r\n'.join(str(item) for item in output_strs)
+        print(f"[WoodWOP CRITICAL ERROR] Failed to join cleaned_output: {e}")
+        print(f"[WoodWOP CRITICAL ERROR] cleaned_output type: {type(cleaned_output)}")
+        print(f"[WoodWOP CRITICAL ERROR] cleaned_output length: {len(cleaned_output)}")
+        if cleaned_output:
+            print(f"[WoodWOP CRITICAL ERROR] First item type: {type(cleaned_output[0])}")
+        # Fallback: convert everything to string and clean
+        cleaned_fallback = []
+        for item in output_strs:
+            cleaned = str(item).rstrip(' \t\r\n')
+            if cleaned != '':
+                cleaned_fallback.append(cleaned)
+        result = '\r\n'.join(cleaned_fallback)
+    
+    # CRITICAL: Remove any remaining CR CR sequences (double CR)
+    # This handles cases where \r\r\n might still exist despite cleaning
+    while '\r\r' in result:
+        result = result.replace('\r\r', '\r')
+    
+    # Ensure file ends with CRLF
+    if result and not result.endswith('\r\n'):
+        result += '\r\n'
+    
+    # Use file_writer to clean content (ensures proper CRLF and removes any remaining issues)
+    if HAS_FILE_WRITER:
+        try:
+            result = file_writer.clean_mpr_content(result)
+        except Exception as e:
+            print(f"[WoodWOP WARNING] Failed to use file_writer.clean_mpr_content(): {e}")
+            # Continue with result as-is
     
     print(f"[WoodWOP DEBUG] generate_mpr_content() result length: {len(result)} characters")
     print(f"[WoodWOP DEBUG] generate_mpr_content() result type: {type(result).__name__}")
@@ -545,9 +598,13 @@ def generate_mpr_content(z_safe=20.0):
         print(f"[WoodWOP CRITICAL ERROR] result value (first 500 chars): {str(result)[:500]}")
         # Force conversion
         if isinstance(result, list):
-            result = '\r\n'.join(str(item) for item in result)
+            cleaned_list = [str(item).rstrip('\r\n') for item in result if str(item).strip()]
+            result = '\r\n'.join(cleaned_list)
         else:
             result = str(result) if result else ""
+        # Remove double CR
+        while '\r\r' in result:
+            result = result.replace('\r\r', '\r')
         print(f"[WoodWOP CRITICAL ERROR] After conversion: type={type(result).__name__}, length={len(result)}")
     
     if len(result) == 0:
