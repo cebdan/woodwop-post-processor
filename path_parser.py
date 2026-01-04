@@ -92,8 +92,11 @@ def extract_contour_from_path(obj):
             dy = abs(y - current_y)
             dz = abs(z - current_z)
             
+            print(f"[WoodWOP] Found G0 at index {idx}: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, dx={dx:.3f}, dy={dy:.3f}, dz={dz:.3f}")
+            
             # Skip zero movements
             if dx < 0.001 and dy < 0.001 and dz < 0.001:
+                print(f"[WoodWOP] Skipping G0 at index {idx} (zero movement)")
                 # Update position only (no element added)
                 current_x = x
                 current_y = y
@@ -127,6 +130,7 @@ def extract_contour_from_path(obj):
                 # There are working elements - skip G0 at start/end
                 # Skip G0 before first working element
                 if first_working_idx is not None and idx < first_working_idx:
+                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (before first working element at {first_working_idx})")
                     utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (before first working element)")
                     # Update position only (no element added)
                     current_x = x
@@ -135,6 +139,7 @@ def extract_contour_from_path(obj):
                     continue
                 # Skip G0 after last working element
                 if last_working_idx is not None and idx > last_working_idx:
+                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (after last working element at {last_working_idx})")
                     utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (after last working element)")
                     # Update position only (no element added)
                     current_x = x
