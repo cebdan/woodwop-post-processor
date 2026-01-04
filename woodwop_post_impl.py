@@ -420,23 +420,25 @@ def export(objectslist, filename, argstring):
         original_z_safe = z_safe
         print(f"[WoodWOP WARNING] z_safe ({original_z_safe:.3f} mm) is less than 20mm minimum. Increasing to 20mm.")
         z_safe = 20.0
-        try:
-            if FreeCAD:
+        # Show warning dialog if FreeCAD GUI is available
+        if FreeCAD and hasattr(FreeCAD, 'GuiUp') and FreeCAD.GuiUp:
+            try:
                 # Try to use Qt message box for better user experience
-                try:
-                    from . import woodwop_file_dialog
-                    woodwop_file_dialog.show_warning_message(
-                        title="WoodWOP Warning",
-                        message=f"z_safe was increased to 20mm minimum.\n\nOriginal value was {original_z_safe:.3f} mm.\nUse /no_z_safe20 flag to disable this check."
+                from . import woodwop_file_dialog
+                woodwop_file_dialog.show_warning_message(
+                    title="WoodWOP Warning",
+                    message=f"z_safe was increased to 20mm minimum.\n\nOriginal value: {original_z_safe:.3f} mm\nNew value: 20.00 mm\n\nUse /no_z_safe20 flag to disable this check."
+                )
+            except Exception as e:
+                # Fallback to FreeCAD console
+                if hasattr(FreeCAD, 'Console'):
+                    FreeCAD.Console.PrintWarning(
+                        f"[WoodWOP] z_safe increased to 20mm (was {original_z_safe:.3f} mm). "
+                        f"Use /no_z_safe20 to disable.\n"
                     )
-                except:
-                    # Fallback to FreeCAD console
-                    if hasattr(FreeCAD, 'Console'):
-                        FreeCAD.Console.PrintWarning(
-                            f"WoodWOP: z_safe was increased to 20mm minimum. Original value was {original_z_safe:.3f} mm. Use /no_z_safe20 flag to disable this check.\n"
-                        )
-        except:
-            pass
+        else:
+            # Console-only mode
+            print(f"[WoodWOP] Use /no_z_safe20 flag to disable 20mm minimum check.")
     
     # Generate MPR content
     mpr_content = mpr_generator.generate_mpr_content(z_safe)
