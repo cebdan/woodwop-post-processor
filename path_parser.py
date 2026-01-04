@@ -71,6 +71,13 @@ def extract_contour_from_path(obj):
         utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: All G0 commands will be processed as G1 (linear moves)")
 
     # Second pass: process commands
+    print(f"[WoodWOP] Processing {len(path_commands)} commands")
+    g0_count = sum(1 for cmd in path_commands if cmd.Name in ['G0', 'G00'])
+    g1_count = sum(1 for cmd in path_commands if cmd.Name in ['G1', 'G01'])
+    g2_count = sum(1 for cmd in path_commands if cmd.Name in ['G2', 'G02'])
+    g3_count = sum(1 for cmd in path_commands if cmd.Name in ['G3', 'G03'])
+    print(f"[WoodWOP] Command counts: G0={g0_count}, G1={g1_count}, G2={g2_count}, G3={g3_count}")
+    
     for idx, cmd in enumerate(path_commands):
         params = cmd.Parameters
 
