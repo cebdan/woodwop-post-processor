@@ -207,7 +207,7 @@ def extract_contour_from_path(obj):
                     utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
         
         # Linear move (G1) - create line
-        if cmd.Name in ['G1', 'G01']:
+        elif cmd.Name in ['G1', 'G01']:
             # Check if there is actual movement (dX, dY, or dZ)
             # Skip if all movements are less than 0.001 (no actual movement)
             dx = abs(x - current_x)
