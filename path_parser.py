@@ -78,6 +78,17 @@ def extract_contour_from_path(obj):
     g3_count = sum(1 for cmd in path_commands if cmd.Name in ['G3', 'G03'])
     print(f"[WoodWOP] Command counts: G0={g0_count}, G1={g1_count}, G2={g2_count}, G3={g3_count}")
     
+    # Debug: Show all commands with indices
+    if config.ENABLE_VERBOSE_LOGGING:
+        print(f"[WoodWOP DEBUG] All commands:")
+        for idx, cmd in enumerate(path_commands):
+            cmd_name = cmd.Name
+            params = cmd.Parameters
+            x = params.get('X', 'N/A')
+            y = params.get('Y', 'N/A')
+            z = params.get('Z', 'N/A')
+            print(f"[WoodWOP DEBUG]   [{idx}] {cmd_name}: X={x}, Y={y}, Z={z}")
+    
     for idx, cmd in enumerate(path_commands):
         params = cmd.Parameters
 
