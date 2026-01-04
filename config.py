@@ -43,13 +43,21 @@ TOOLTIP_ARGS = '''
   The file contains all Path Commands from all operations for debugging and analysis.
   If not set, no path commands file will be generated.
 --use_g0 or /use_g0: Enable G0 processing as G1 (linear moves)
-  When set, G0 (rapid move) commands are processed as G1 (linear moves) and added to contour.
-  If not set (default), G0 chains at the start and end of trajectory are skipped:
-    - G0 commands before first working element (G1/G2/G3) are skipped (only position updated)
-    - G0 commands after last working element (G1/G2/G3) are skipped (only position updated)
-    - G0 commands between working elements are still processed as G1
+  
+  LOGIC:
+  - If flag is SET: ALL G0 commands are processed as G1 (linear moves) and added to contour
+  - If flag is NOT SET (default): G0 chains at start and end of trajectory are SKIPPED:
+    * G0 commands before first working element (G1/G2/G3) are skipped (only position updated)
+    * G0 commands after last working element (G1/G2/G3) are skipped (only position updated)
+    * G0 commands BETWEEN working elements are still processed as G1 (part of contour)
+  
   This is useful because FreeCAD generates approach/retract moves (G0) that should not be
   included in the contour, as WoodWOP handles these automatically.
+  
+  Example:
+    Commands: [G0, G0, G1, G0, G2, G0, G0]
+    - Without flag: G0 at start/end skipped, G0 between G1/G2 processed
+    - With flag: ALL G0 processed as G1
 '''
 
 # File extension for WoodWOP MPR files
