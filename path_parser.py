@@ -78,7 +78,7 @@ def extract_contour_from_path(obj):
     g3_count = sum(1 for cmd in path_commands if cmd.Name in ['G3', 'G03'])
     print(f"[WoodWOP] Command counts: G0={g0_count}, G1={g1_count}, G2={g2_count}, G3={g3_count}")
     
-    # Debug: Show all commands with indices
+    # Debug: Show all commands with indices and G0 positions
     if config.ENABLE_VERBOSE_LOGGING:
         print(f"[WoodWOP DEBUG] All commands:")
         for idx, cmd in enumerate(path_commands):
@@ -87,7 +87,20 @@ def extract_contour_from_path(obj):
             x = params.get('X', 'N/A')
             y = params.get('Y', 'N/A')
             z = params.get('Z', 'N/A')
-            print(f"[WoodWOP DEBUG]   [{idx}] {cmd_name}: X={x}, Y={y}, Z={z}")
+            is_g0 = cmd_name in ['G0', 'G00']
+            is_working = cmd_name in ['G1', 'G01', 'G2', 'G02', 'G3', 'G03']
+            status = ""
+            if not config.USE_G0 and first_working_idx is not None and last_working_idx is not None:
+                if is_g0:
+                    if idx < first_working_idx:
+                        status = " [SKIP: before first working]"
+                    elif idx > last_working_idx:
+                        status = " [SKIP: after last working]"
+                    else:
+                        status = " [PROCESS: between working]"
+                elif is_working:
+                    status = " [WORKING]"
+            print(f"[WoodWOP DEBUG]   [{idx}] {cmd_name}: X={x}, Y={y}, Z={z}{status}")
     
     for idx, cmd in enumerate(path_commands):
         params = cmd.Parameters
@@ -115,64 +128,49 @@ def extract_contour_from_path(obj):
             # Skip zero movements
             if dx < 0.001 and dy < 0.001 and dz < 0.001:
                 print(f"[WoodWOP] Skipping G0 at index {idx} (zero movement)")
-                # Update position only (no element added)
                 current_x = x
                 current_y = y
                 current_z = z
                 continue
             
-            # CRITICAL: If USE_G0 is True, process ALL G0 as G1 (linear moves)
+            # Determine if this G0 should be processed
+            should_process_g0 = False
+            
             if config.USE_G0:
-                print(f"[WoodWOP] USE_G0=True: Processing G0 at index {idx} as G1 (linear move)")
-                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1 (linear move)")
-                # Process G0 as G1 (linear move) - create line element
-                line_elem = {
-                    'type': 'KL',  # Line
-                    'x': x,
-                    'y': y,
-                    'z': z,  # Always include Z coordinate
-                    'move_type': 'G0'  # Store original movement type for analysis
-                }
-                elements.append(line_elem)
-                print(f"[WoodWOP] Added G0 element (USE_G0=True): X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
-                utils.debug_log(f"[WoodWOP DEBUG] Added G0 element (USE_G0=True): X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
+                # USE_G0=True: Process ALL G0 as G1
+                should_process_g0 = True
+                print(f"[WoodWOP] USE_G0=True: Processing G0 at index {idx} as G1")
+                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1")
+            else:
+                # USE_G0=False: Skip G0 at start/end, process G0 between working elements
+                if first_working_idx is not None and idx < first_working_idx:
+                    # Before first working element - skip
+                    should_process_g0 = False
+                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (before first working at {first_working_idx})")
+                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 (before first working)")
+                elif last_working_idx is not None and idx > last_working_idx:
+                    # After last working element - skip
+                    should_process_g0 = False
+                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (after last working at {last_working_idx})")
+                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 (after last working)")
+                else:
+                    # Between working elements OR no working elements - process
+                    should_process_g0 = True
+                    if first_working_idx is None and last_working_idx is None:
+                        print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} (no working elements)")
+                        utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 (no working elements)")
+                    else:
+                        print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} (between working elements)")
+                        utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 (between working elements)")
+            
+            if not should_process_g0:
+                # Skip this G0 - only update position
                 current_x = x
                 current_y = y
                 current_z = z
-                continue  # Skip rest of G0 processing logic
+                continue
             
-            # If USE_G0 is False, skip G0 chains at start/end of trajectory
-            # But only if there are working elements (G1/G2/G3)
-            # If there are no working elements, process all G0 as G1
-            if first_working_idx is not None or last_working_idx is not None:
-                # There are working elements - skip G0 at start/end
-                # Skip G0 before first working element
-                if first_working_idx is not None and idx < first_working_idx:
-                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (before first working element at {first_working_idx})")
-                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (before first working element)")
-                    # Update position only (no element added)
-                    current_x = x
-                    current_y = y
-                    current_z = z
-                    continue
-                # Skip G0 after last working element
-                if last_working_idx is not None and idx > last_working_idx:
-                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (after last working element at {last_working_idx})")
-                    utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 at index {idx} (after last working element)")
-                    # Update position only (no element added)
-                    current_x = x
-                    current_y = y
-                    current_z = z
-                    continue
-                # G0 is between working elements - process as G1
-                print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
-                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
-            else:
-                # No working elements - process all G0 as G1
-                print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
-                utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 at index {idx} as G1 (no working elements found)")
-            
-            # Process G0 as G1 (linear move) - create line element
+            # Create line element (SINGLE place for this code!)
             line_elem = {
                 'type': 'KL',  # Line
                 'x': x,
@@ -183,6 +181,7 @@ def extract_contour_from_path(obj):
             elements.append(line_elem)
             print(f"[WoodWOP] Added G0 element: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
             utils.debug_log(f"[WoodWOP DEBUG] Added G0 element: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
+            
             current_x = x
             current_y = y
             current_z = z
