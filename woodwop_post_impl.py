@@ -392,7 +392,12 @@ def export(objectslist, filename, argstring):
         min_x, min_y, min_z = geometry.calculate_part_minimum()
         config.COORDINATE_OFFSET_X = -min_x
         config.COORDINATE_OFFSET_Y = -min_y
-        config.COORDINATE_OFFSET_Z = -min_z
+        # USE_Z_PART: if True, don't apply offset for Z (use Z from Job without correction)
+        if not config.USE_Z_PART:
+            config.COORDINATE_OFFSET_Z = -min_z
+        else:
+            config.COORDINATE_OFFSET_Z = 0.0
+            print(f"[WoodWOP DEBUG] USE_Z_PART enabled: Z offset set to 0.0 (Z coordinates from Job without correction)")
         print(f"[WoodWOP DEBUG] G54 offset: X={config.COORDINATE_OFFSET_X:.3f}, Y={config.COORDINATE_OFFSET_Y:.3f}, Z={config.COORDINATE_OFFSET_Z:.3f}")
     
     # Calculate z_safe from SetupSheet

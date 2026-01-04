@@ -86,23 +86,52 @@ def parse_arguments(argstring):
             
         elif arg.startswith('--precision=') or normalized_arg.startswith('precision='):
             value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
-            config.PRECISION = int(value)
-            print(f"[WoodWOP] PRECISION = {config.PRECISION}")
+            try:
+                precision_value = int(value)
+                if precision_value < 1 or precision_value > 6:
+                    print(f"[WoodWOP WARNING] Invalid precision: {precision_value}, must be between 1 and 6. Using 3.")
+                    precision_value = 3
+                config.PRECISION = precision_value
+                print(f"[WoodWOP] PRECISION = {config.PRECISION}")
+            except ValueError:
+                print(f"[WoodWOP WARNING] Invalid precision value: '{value}', must be an integer. Using 3.")
+                config.PRECISION = 3
             
         elif arg.startswith('--workpiece-length=') or normalized_arg.startswith('workpiece-length='):
             value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
-            config.WORKPIECE_LENGTH = float(value)
-            print(f"[WoodWOP] WORKPIECE_LENGTH = {config.WORKPIECE_LENGTH}")
+            try:
+                length_value = float(value)
+                if length_value <= 0:
+                    print(f"[WoodWOP WARNING] Invalid workpiece length: {length_value}, must be positive. Ignoring.")
+                else:
+                    config.WORKPIECE_LENGTH = length_value
+                    print(f"[WoodWOP] WORKPIECE_LENGTH = {config.WORKPIECE_LENGTH}")
+            except ValueError:
+                print(f"[WoodWOP WARNING] Invalid workpiece length value: '{value}', must be a number. Ignoring.")
             
         elif arg.startswith('--workpiece-width=') or normalized_arg.startswith('workpiece-width='):
             value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
-            config.WORKPIECE_WIDTH = float(value)
-            print(f"[WoodWOP] WORKPIECE_WIDTH = {config.WORKPIECE_WIDTH}")
+            try:
+                width_value = float(value)
+                if width_value <= 0:
+                    print(f"[WoodWOP WARNING] Invalid workpiece width: {width_value}, must be positive. Ignoring.")
+                else:
+                    config.WORKPIECE_WIDTH = width_value
+                    print(f"[WoodWOP] WORKPIECE_WIDTH = {config.WORKPIECE_WIDTH}")
+            except ValueError:
+                print(f"[WoodWOP WARNING] Invalid workpiece width value: '{value}', must be a number. Ignoring.")
             
         elif arg.startswith('--workpiece-thickness=') or normalized_arg.startswith('workpiece-thickness='):
             value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
-            config.WORKPIECE_THICKNESS = float(value)
-            print(f"[WoodWOP] WORKPIECE_THICKNESS = {config.WORKPIECE_THICKNESS}")
+            try:
+                thickness_value = float(value)
+                if thickness_value <= 0:
+                    print(f"[WoodWOP WARNING] Invalid workpiece thickness: {thickness_value}, must be positive. Ignoring.")
+                else:
+                    config.WORKPIECE_THICKNESS = thickness_value
+                    print(f"[WoodWOP] WORKPIECE_THICKNESS = {config.WORKPIECE_THICKNESS}")
+            except ValueError:
+                print(f"[WoodWOP WARNING] Invalid workpiece thickness value: '{value}', must be a number. Ignoring.")
             
         elif arg in ['--g0_start', '/g0_start', '/G0_start'] or normalized_arg in ['g0_start', 'G0_start']:
             config.ENABLE_G0_START = True
