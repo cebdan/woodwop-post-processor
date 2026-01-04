@@ -29,14 +29,17 @@ def calculate_part_minimum():
             min_x = start_x
         if min_y is None or start_y < min_y:
             min_y = start_y
-        if min_z is None or start_z < min_z:
-            min_z = start_z
+        # Skip string expressions (e.g., "th+z_safe") in geometry calculations
+        if isinstance(start_z, (int, float)):
+            if min_z is None or start_z < min_z:
+                min_z = start_z
         points_checked += 1
         
         # Track previous point for arc center calculation
         prev_x = start_x
         prev_y = start_y
-        prev_z = start_z
+        # Use numeric value for calculations (0.0 if string expression)
+        prev_z = start_z if isinstance(start_z, (int, float)) else 0.0
         
         # Check all elements in contour
         for elem_idx, elem in enumerate(contour.get('elements', [])):
@@ -142,16 +145,19 @@ def calculate_part_bounds():
             min_y = start_y
         if max_y is None or start_y > max_y:
             max_y = start_y
-        if min_z is None or start_z < min_z:
-            min_z = start_z
-        if max_z is None or start_z > max_z:
-            max_z = start_z
+        # Skip string expressions (e.g., "th+z_safe") in geometry calculations
+        if isinstance(start_z, (int, float)):
+            if min_z is None or start_z < min_z:
+                min_z = start_z
+            if max_z is None or start_z > max_z:
+                max_z = start_z
         points_checked += 1
         
         # Track previous point for arc center calculation
         prev_x = start_x
         prev_y = start_y
-        prev_z = start_z
+        # Use numeric value for calculations (0.0 if string expression)
+        prev_z = start_z if isinstance(start_z, (int, float)) else 0.0
         
         # Check all elements in contour
         for elem_idx, elem in enumerate(contour.get('elements', [])):

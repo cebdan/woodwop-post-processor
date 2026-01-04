@@ -17,32 +17,34 @@ If auto-rename fails, manually rename .nc to .mpr
 '''
 
 TOOLTIP_ARGS = '''
---no-comments: Suppress comment output
---precision=X: Set coordinate precision (default 3)
---workpiece-length=X: Workpiece length in mm (default: auto-detect)
---workpiece-width=Y: Workpiece width in mm (default: auto-detect)
---workpiece-thickness=Z: Workpiece thickness in mm (default: auto-detect)
---use-part-name: Name .mpr file after the part/body name instead of document name
---g54: Set coordinate system offset to minimum part coordinates (legacy flag)
+All flags must use slash format (/flag). Double-dash format (--flag) is not supported.
+
+/no-comments: Suppress comment output
+/precision=X: Set coordinate precision (default 3)
+/workpiece-length=X: Workpiece length in mm (default: auto-detect)
+/workpiece-width=Y: Workpiece width in mm (default: auto-detect)
+/workpiece-thickness=Z: Workpiece thickness in mm (default: auto-detect)
+/use-part-name: Name .mpr file after the part/body name instead of document name
+/g54: Set coordinate system offset to minimum part coordinates (legacy flag)
   When set, MPR coordinates will be offset by minimum part coordinates (X, Y, Z).
   Origin (0,0,0) will be at the minimum point of the part.
   NOTE: G-code output is NOT affected and remains unchanged.
   PREFERRED: Use Work Coordinate Systems (Fixtures) in Job settings instead of this flag.
   If G54 is checked in Job settings, it will automatically be used.
---log or /log: Enable verbose logging (detailed debug output)
+/log: Enable verbose logging (detailed debug output)
   When set, detailed debug information will be printed to console and log file.
   If not set, only critical errors and warnings are shown.
---report or /report: Enable job report generation
+/report: Enable job report generation
   When set, a detailed job report file (_job_report.txt) will be created.
   If not set, no report file will be generated.
---nc or /nc: Enable NC (G-code) file output
+/nc: Enable NC (G-code) file output
   When set, both MPR and NC files will be created.
   If not set, only MPR file will be created.
---p_c or /p_c or --p-c or /p-c: Enable Path Commands export
+/p_c or /p-c: Enable Path Commands export
   When set, a detailed path commands file (_path_commands.txt) will be created.
   The file contains all Path Commands from all operations for debugging and analysis.
   If not set, no path commands file will be generated.
---use_g0 or /use_g0: Enable G0 processing as G1 (linear moves)
+/use_g0: Enable G0 processing as G1 (linear moves)
   
   LOGIC:
   - If flag is SET: ALL G0 commands are processed as G1 (linear moves) and added to contour
@@ -101,11 +103,7 @@ ENABLE_PATH_COMMANDS_EXPORT = False
 ENABLE_PROCESSING_ANALYSIS = False
 ENABLE_NO_Z_SAFE20 = False
 USE_G0 = False  # If False: G0 chains at start/end of trajectory are skipped
-ENABLE_G0_START = False  # If True: Add G0 rapid move to start of contours
 USE_Z_PART = False  # If True: Use Z coordinates from Job without correction
-
-# G0 tracking for /g0_start feature
-LAST_G0_POSITION = None  # (x, y, z) tuple of last G0 position before first G1/G2/G3
 
 # Tracking state
 contour_counter = 1

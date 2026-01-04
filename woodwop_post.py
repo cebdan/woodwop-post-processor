@@ -9,9 +9,67 @@ This file is the entry point for FreeCAD. It imports the modular post-processor.
 import os
 import sys
 import importlib.util
+import glob
+import shutil
+
+# Development mode: Auto-clean cache on module load
+# Set WOODWOP_DEV_MODE=1 environment variable to enable
+# Or create a file named .dev_mode in the module directory
+_current_dir = os.path.dirname(os.path.abspath(__file__))
+_dev_mode_file = os.path.join(_current_dir, '.dev_mode')
+_DEV_MODE = os.environ.get('WOODWOP_DEV_MODE', '0') == '1' or os.path.exists(_dev_mode_file)
+
+if _DEV_MODE:
+    # Use a flag to ensure cache is cleaned only once per session
+    _cache_cleaned_flag = f"_woodwop_cache_cleaned_{_current_dir}"
+    if not hasattr(sys, _cache_cleaned_flag):
+        # Clean .pyc files
+        pyc_files = glob.glob(os.path.join(_current_dir, '*.pyc'))
+        for f in pyc_files:
+            try:
+                os.remove(f)
+            except (OSError, PermissionError):
+                pass
+        
+        # Clean __pycache__ directories
+        pycache_dirs = glob.glob(os.path.join(_current_dir, '__pycache__'))
+        for d in pycache_dirs:
+            try:
+                shutil.rmtree(d)
+            except (OSError, PermissionError):
+                pass
+        
+        # Also clean __pycache__ in subdirectories
+        for root, dirs, files in os.walk(_current_dir):
+            pycache_path = os.path.join(root, '__pycache__')
+            if os.path.exists(pycache_path):
+                try:
+                    shutil.rmtree(pycache_path)
+                except (OSError, PermissionError):
+                    pass
+        
+        # Remove only woodwop modules from sys.modules (but not woodwop_post itself to avoid recursion)
+        modules_to_remove = [
+            name for name in sys.modules.keys() 
+            if name.startswith('woodwop') and name != 'woodwop_post'
+        ]
+        for module_name in modules_to_remove:
+            try:
+                del sys.modules[module_name]
+            except KeyError:
+                pass
+        
+        # Mark as cleaned
+        setattr(sys, _cache_cleaned_flag, True)
+        
+        try:
+            import FreeCAD  # noqa: F401
+            FreeCAD.Console.PrintMessage(f"[WoodWOP DEV] Cache cleaned in {_current_dir}\n")
+        except ImportError:
+            print(f"[WoodWOP DEV] Cache cleaned in {_current_dir}")
 
 # Add parent directory to path to allow importing from woodwop package
-_current_dir = os.path.dirname(os.path.abspath(__file__))
+# _current_dir already defined above for dev mode
 _parent_dir = os.path.dirname(_current_dir)
 if _parent_dir not in sys.path:
     sys.path.insert(0, _parent_dir)

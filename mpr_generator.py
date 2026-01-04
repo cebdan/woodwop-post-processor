@@ -123,15 +123,24 @@ def generate_mpr_content(z_safe=20.0):
         start_x, start_y, start_z = contour.get('start_pos', (0.0, 0.0, 0.0))
         start_x += config.COORDINATE_OFFSET_X
         start_y += config.COORDINATE_OFFSET_Y
-        # Apply Z offset only if USE_Z_PART is False
-        if not config.USE_Z_PART:
-            start_z += config.COORDINATE_OFFSET_Z
+        
+        # Check if start_z is a string expression (e.g., "th+z_safe")
+        # If it's a string, pass it as-is without offset or formatting
+        # WoodWOP will calculate the expression value
+        if isinstance(start_z, str):
+            # Expression string - pass as-is, WoodWOP will calculate
+            z_value = start_z
+        else:
+            # Numeric value - apply offset and format
+            if not config.USE_Z_PART:
+                start_z += config.COORDINATE_OFFSET_Z
+            z_value = utils.fmt(start_z)
 
         output.append('$E0')
         output.append('KP ')
         output.append(f'X={utils.fmt(start_x)}')
         output.append(f'Y={utils.fmt(start_y)}')
-        output.append(f'Z={utils.fmt(start_z)}')
+        output.append(f'Z={z_value}')
         output.append('KO=00')
         output.append('.X=0.000000')
         output.append('.Y=0.000000')
@@ -139,54 +148,26 @@ def generate_mpr_content(z_safe=20.0):
         output.append('.KO=00')
         output.append('')
 
-        # Track if G0 element was added (for element index adjustment)
-        g0_element_added = False
-        
-        # Add G0 rapid move to start if /g0_start is enabled
-        if config.ENABLE_G0_START and config.LAST_G0_POSITION is not None:
-            g0_x, g0_y, g0_z = config.LAST_G0_POSITION
-            # Apply coordinate offsets
-            g0_x += config.COORDINATE_OFFSET_X
-            g0_y += config.COORDINATE_OFFSET_Y
-            # Apply Z offset only if USE_Z_PART is False
-            if not config.USE_Z_PART:
-                g0_z += config.COORDINATE_OFFSET_Z
-            else:
-                # Use Z from Job without offset
-                pass  # g0_z already has correct value
-            
-            # Add G0 element as first element (before $E1)
-            output.append('$E1')
-            output.append('KL ')
-            output.append(f'X={utils.fmt(g0_x)}')
-            output.append(f'Y={utils.fmt(g0_y)}')
-            output.append(f'Z={utils.fmt(g0_z)}')
-            output.append('KO=00')
-            output.append('.X=0.000000')
-            output.append('.Y=0.000000')
-            output.append('.Z=0.000000')
-            output.append('.KO=00')
-            output.append('\\G0 Rapid Move to Start')
-            output.append('')
-            g0_element_added = True
-            utils.debug_log(f"[WoodWOP DEBUG] Added G0 rapid move to start: ({g0_x:.3f}, {g0_y:.3f}, {g0_z:.3f})")
-
         # Add contour elements
         # Store original (unoffset) coordinates for arc center calculations
-        prev_elem_x_orig = contour.get('start_pos', (0.0, 0.0, 0.0))[0]
-        prev_elem_y_orig = contour.get('start_pos', (0.0, 0.0, 0.0))[1]
-        prev_elem_z_orig = contour.get('start_pos', (0.0, 0.0, 0.0))[2]
+        start_pos_orig = contour.get('start_pos', (0.0, 0.0, 0.0))
+        prev_elem_x_orig = start_pos_orig[0]
+        prev_elem_y_orig = start_pos_orig[1]
+        prev_elem_z_orig = start_pos_orig[2]
         
         # Offset coordinates for output
         prev_elem_x = start_x
         prev_elem_y = start_y
-        prev_elem_z = start_z
+        # For calculations, use numeric value (0.0 if start_z is expression)
+        # The actual Z value will come from first element
+        if isinstance(start_z, str):
+            prev_elem_z = 0.0  # Use 0.0 for calculations, expression will be in KP
+        else:
+            prev_elem_z = start_z
         
         for idx, elem in enumerate(contour['elements']):
-            # Element number: if G0 was added, shift by 1 (G0 is $E1, first element is $E2)
+            # Element number (1-based indexing)
             elem_num = idx + 1
-            if g0_element_added:
-                elem_num = idx + 2  # G0 is $E1, so first element is $E2
             output.append(f'$E{elem_num}')
 
             if elem['type'] == 'KL':  # Line
@@ -455,20 +436,12 @@ def generate_mpr_content(z_safe=20.0):
             last_element_idx = 0
             if contour and contour['elements']:
                 last_element_idx = len(contour['elements']) - 1
-                # If G0 element was added, adjust indices
-                if config.ENABLE_G0_START and config.LAST_G0_POSITION is not None:
-                    # G0 is $E1, so EA starts at $E2 (index 1)
-                    # Last element index also shifts by 1
-                    last_element_idx = len(contour['elements'])  # Last element is now at index len(elements)
             
             rk_value = geometry.determine_tool_compensation(op['contour'])
             
             output.append(f'<{op["id"]} \\Contourfraesen\\')
-            # EA: if G0 was added, start at $E2 (index 1), otherwise $E1 (index 0)
-            if config.ENABLE_G0_START and config.LAST_G0_POSITION is not None:
-                output.append(f'EA="{op["contour"]}:1"')  # Start at $E2 (first actual element)
-            else:
-                output.append(f'EA="{op["contour"]}:0"')  # Start at $E1
+            # EA: start at $E1 (index 0)
+            output.append(f'EA="{op["contour"]}:0"')
             output.append(f'MDA="SEN"')
             output.append(f'STUFEN="0"')
             output.append(f'BL="0"')
@@ -527,11 +500,8 @@ def generate_mpr_content(z_safe=20.0):
                     break
             
             output.append(f'<{op["id"]} \\Pocket\\')
-            # EA: if G0 was added, start at $E2 (index 1), otherwise $E1 (index 0)
-            if config.ENABLE_G0_START and config.LAST_G0_POSITION is not None:
-                output.append(f'EA="{op["contour"]}:1"')  # Start at $E2 (first actual element)
-            else:
-                output.append(f'EA="{op["contour"]}:0"')  # Start at $E1
+            # EA: start at $E1 (index 0)
+            output.append(f'EA="{op["contour"]}:0"')
             output.append(f'TNO="{op["tool"]}"')
             output.append('')
 

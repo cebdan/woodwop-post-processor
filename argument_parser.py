@@ -25,9 +25,7 @@ def parse_arguments(argstring):
     config.ENABLE_PROCESSING_ANALYSIS = False
     config.ENABLE_NO_Z_SAFE20 = False
     config.USE_G0 = False
-    config.ENABLE_G0_START = False
     config.USE_Z_PART = False
-    config.LAST_G0_POSITION = None
     
     if not argstring:
         return {}
@@ -37,68 +35,73 @@ def parse_arguments(argstring):
     print(f"[WoodWOP] Split into {len(args)} arguments: {args}")
     
     for arg in args:
-        # Normalize argument to handle both -- and / formats
-        normalized_arg = arg.lstrip('-').lstrip('/')
+        # Only support slash format (/flag), not double-dash (--flag)
+        if not arg.startswith('/'):
+            print(f"[WoodWOP WARNING] Argument '{arg}' ignored - only slash format (/flag) is supported")
+            continue
+        
+        # Normalize argument (remove leading slash)
+        normalized_arg = arg.lstrip('/')
         print(f"[WoodWOP] Processing argument: '{arg}' (normalized: '{normalized_arg}')")
         
-        if arg == '--log' or normalized_arg == 'log':
+        if normalized_arg == 'log':
             config.ENABLE_VERBOSE_LOGGING = True
             print(f"[WoodWOP] Verbose logging enabled via {arg} flag")
             _update_module_flag('ENABLE_VERBOSE_LOGGING', True)
             
-        elif arg == '--report' or normalized_arg == 'report':
+        elif normalized_arg == 'report':
             config.ENABLE_JOB_REPORT = True
             print(f"[WoodWOP] Job report generation enabled via {arg} flag")
             _update_module_flag('ENABLE_JOB_REPORT', True)
             
-        elif arg in ['--no_z_safe20', '/no_z_safe20'] or normalized_arg == 'no_z_safe20':
+        elif normalized_arg == 'no_z_safe20':
             config.ENABLE_NO_Z_SAFE20 = True
-            print(f"[WoodWOP] 20mm minimum for z_safe disabled via /no_z_safe20 flag")
+            print(f"[WoodWOP] 20mm minimum for z_safe disabled via {arg} flag")
             _update_module_flag('ENABLE_NO_Z_SAFE20', True)
             
-        elif arg == '--nc' or normalized_arg == 'nc':
+        elif normalized_arg == 'nc':
             config.OUTPUT_NC_FILE = True
             print(f"[WoodWOP] NC file output enabled via {arg} flag")
             _update_module_flag('OUTPUT_NC_FILE', True)
             
-        elif arg in ['--p_c', '--p-c'] or normalized_arg in ['p_c', 'p-c']:
+        elif normalized_arg in ['p_c', 'p-c']:
             config.ENABLE_PATH_COMMANDS_EXPORT = True
             print(f"[WoodWOP] Path commands export enabled via {arg} flag")
             _update_module_flag('ENABLE_PATH_COMMANDS_EXPORT', True)
             
-        elif arg in ['--use_g0', '/use_g0'] or normalized_arg == 'use_g0':
+        elif normalized_arg == 'use_g0':
             config.USE_G0 = True
             print(f"[WoodWOP] G0 processing enabled via {arg} flag (G0 will be treated as G1)")
             _update_module_flag('USE_G0', True)
             
-        elif arg in ['--p_a', '--p-a'] or normalized_arg in ['p_a', 'p-a']:
+        elif normalized_arg in ['p_a', 'p-a']:
             config.ENABLE_PROCESSING_ANALYSIS = True
             print(f"[WoodWOP] Processing analysis export enabled via {arg} flag")
             _update_module_flag('ENABLE_PROCESSING_ANALYSIS', True)
             
-        elif arg == '--no-comments' or normalized_arg == 'no-comments':
+        elif normalized_arg == 'no-comments':
             config.OUTPUT_COMMENTS = False
-            print(f"[WoodWOP] OUTPUT_COMMENTS = False")
+            print("[WoodWOP] OUTPUT_COMMENTS = False")
             
-        elif arg == '--use-part-name' or normalized_arg == 'use-part-name':
+        elif normalized_arg == 'use-part-name':
             config.USE_PART_NAME = True
-            print(f"[WoodWOP] USE_PART_NAME = True")
+            print("[WoodWOP] USE_PART_NAME = True")
             
-        elif arg.startswith('--precision=') or normalized_arg.startswith('precision='):
-            value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
+        elif normalized_arg.startswith('precision='):
+            value = normalized_arg.split('=')[1]
             try:
                 precision_value = int(value)
                 if precision_value < 1 or precision_value > 6:
                     print(f"[WoodWOP WARNING] Invalid precision: {precision_value}, must be between 1 and 6. Using 3.")
                     precision_value = 3
                 config.PRECISION = precision_value
-                print(f"[WoodWOP] PRECISION = {config.PRECISION}")
+                print(f"[WoodWOP] PRECISION = {precision_value}")
             except ValueError:
                 print(f"[WoodWOP WARNING] Invalid precision value: '{value}', must be an integer. Using 3.")
                 config.PRECISION = 3
             
-        elif arg.startswith('--workpiece-length=') or normalized_arg.startswith('workpiece-length='):
-            value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
+        elif normalized_arg.startswith('workpiece-length='):
+            value = normalized_arg.split('=')[1]
             try:
                 length_value = float(value)
                 if length_value <= 0:
@@ -109,8 +112,8 @@ def parse_arguments(argstring):
             except ValueError:
                 print(f"[WoodWOP WARNING] Invalid workpiece length value: '{value}', must be a number. Ignoring.")
             
-        elif arg.startswith('--workpiece-width=') or normalized_arg.startswith('workpiece-width='):
-            value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
+        elif normalized_arg.startswith('workpiece-width='):
+            value = normalized_arg.split('=')[1]
             try:
                 width_value = float(value)
                 if width_value <= 0:
@@ -121,8 +124,8 @@ def parse_arguments(argstring):
             except ValueError:
                 print(f"[WoodWOP WARNING] Invalid workpiece width value: '{value}', must be a number. Ignoring.")
             
-        elif arg.startswith('--workpiece-thickness=') or normalized_arg.startswith('workpiece-thickness='):
-            value = arg.split('=')[1] if '=' in arg else normalized_arg.split('=')[1]
+        elif normalized_arg.startswith('workpiece-thickness='):
+            value = normalized_arg.split('=')[1]
             try:
                 thickness_value = float(value)
                 if thickness_value <= 0:
@@ -133,17 +136,12 @@ def parse_arguments(argstring):
             except ValueError:
                 print(f"[WoodWOP WARNING] Invalid workpiece thickness value: '{value}', must be a number. Ignoring.")
             
-        elif arg in ['--g0_start', '/g0_start', '/G0_start'] or normalized_arg in ['g0_start', 'G0_start']:
-            config.ENABLE_G0_START = True
-            print(f"[WoodWOP] G0 rapid move to contour start enabled via {arg} flag")
-            _update_module_flag('ENABLE_G0_START', True)
-            
-        elif arg in ['--z_part', '/z_part', '--z-part', '/z-part'] or normalized_arg in ['z_part', 'z-part']:
+        elif normalized_arg in ['z_part', 'z-part']:
             config.USE_Z_PART = True
             print(f"[WoodWOP] Z coordinates from Job without offset correction enabled via {arg} flag")
             _update_module_flag('USE_Z_PART', True)
             
-        elif arg in ['--g54', '--G54'] or normalized_arg.lower() == 'g54':
+        elif normalized_arg.lower() == 'g54':
             # Legacy flag support - will be overridden by Job.Fixtures if present
             config.COORDINATE_SYSTEM = 'G54'
             print(f"[WoodWOP] COORDINATE_SYSTEM = G54 (via {arg} flag)")
@@ -156,7 +154,6 @@ def parse_arguments(argstring):
     print(f"[WoodWOP]   ENABLE_JOB_REPORT = {config.ENABLE_JOB_REPORT}")
     print(f"[WoodWOP]   ENABLE_PATH_COMMANDS_EXPORT = {config.ENABLE_PATH_COMMANDS_EXPORT}")
     print(f"[WoodWOP]   USE_G0 = {config.USE_G0}")
-    print(f"[WoodWOP]   ENABLE_G0_START = {config.ENABLE_G0_START}")
     print(f"[WoodWOP]   USE_Z_PART = {config.USE_Z_PART}")
     
     return {}

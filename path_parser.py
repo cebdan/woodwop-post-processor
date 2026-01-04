@@ -37,9 +37,10 @@ def extract_contour_from_path(obj):
     start_y = None
     start_z = None
     
-    # Track last G0 position for /g0_start feature
-    last_g0_before_working = None
     found_first_working = False
+    
+    # Track last position before first working element (for start_pos calculation)
+    last_pos_before_first_working = None
 
     if not hasattr(obj, 'Path'):
         return elements, (0.0, 0.0, 0.0)
@@ -114,12 +115,6 @@ def extract_contour_from_path(obj):
         y = params.get('Y', current_y)
         z = params.get('Z', current_z)
 
-        # Save start position from first movement command
-        if start_x is None and cmd.Name in ['G0', 'G00', 'G1', 'G01', 'G2', 'G02', 'G3', 'G03']:
-            start_x = current_x
-            start_y = current_y
-            start_z = current_z
-
         # ============================================================
         # CRITICAL: G0 (rapid move) processing
         # ============================================================
@@ -130,12 +125,6 @@ def extract_contour_from_path(obj):
             dz = abs(z - current_z)
             
             print(f"[WoodWOP] Found G0 at index {idx}: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, dx={dx:.3f}, dy={dy:.3f}, dz={dz:.3f}")
-            
-            # Track last G0 position before first working element (for /g0_start)
-            if not found_first_working and config.ENABLE_G0_START:
-                last_g0_before_working = (x, y, z)
-                print(f"[WoodWOP] Saved last_g0_before_working: X={x:.3f}, Y={y:.3f}, Z={z:.3f}")
-                utils.debug_log(f"[WoodWOP DEBUG] Saved last_g0_before_working: ({x:.3f}, {y:.3f}, {z:.3f})")
             
             # Skip zero movements
             if dx < 0.001 and dy < 0.001 and dz < 0.001:
@@ -155,6 +144,16 @@ def extract_contour_from_path(obj):
                 should_process_g0 = True
                 print(f"[WoodWOP] G0 ОБРАБОТАН [index {idx}]: USE_G0=True, все G0 обрабатываются как G1")
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1")
+                
+                # Set start position from the START of the FIRST G0 command (before it moves)
+                # X, Y: initial position of first G0 (before it moves)
+                # Z: expression "th+z_safe" (WoodWOP will calculate it)
+                if start_x is None:
+                    start_x = current_x
+                    start_y = current_y
+                    start_z = "th+z_safe"  # Expression string, WoodWOP will calculate
+                    print(f"[WoodWOP] Start position set from start of first G0: X={start_x:.3f}, Y={start_y:.3f}, Z={start_z}")
+                    utils.debug_log(f"[WoodWOP DEBUG] Start position set from start of first G0: ({start_x:.3f}, {start_y:.3f}, Z={start_z})")
             else:
                 # USE_G0=False: Skip G0 CHAINS at start/end, process G0 BETWEEN working elements
                 if first_working_idx is not None and idx < first_working_idx:
@@ -192,28 +191,45 @@ def extract_contour_from_path(obj):
                 print(f"[WoodWOP] G0 добавлен в контур [index {idx}]: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, всего элементов={len(elements)}")
                 utils.debug_log(f"[WoodWOP DEBUG] Added G0 element as G1: total elements={len(elements)}")
             else:
-                # G0 was skipped - only position updated
-                print(f"[WoodWOP] G0 пропущен, позиция обновлена [index {idx}]: X={x:.3f}, Y={y:.3f}, Z={z:.3f} (элемент не добавлен в контур)")
+                # G0 was skipped - only position updated (message already printed above)
                 utils.debug_log(f"[WoodWOP DEBUG] G0 skipped at index {idx}, position updated but not added to contour")
             
             # Update current position (regardless of whether G0 was processed)
             current_x = x
             current_y = y
             current_z = z
+            
+            # Track last position before first working element (for start_pos)
+            # Only when USE_G0=False (when USE_G0=True, start_pos is set from first G0)
+            if not config.USE_G0 and not found_first_working:
+                last_pos_before_first_working = (current_x, current_y, current_z)
+            
             continue  # Important: skip to next command
 
         # Linear move (G1) - create line
         elif cmd.Name in ['G1', 'G01']:
             # ============================================================
-            # Mark first working element (for /g0_start)
+            # Mark first working element (for start_pos)
             # ============================================================
             if not found_first_working:
                 found_first_working = True
-                # Save last G0 position to config for use in mpr_generator
-                if last_g0_before_working and config.ENABLE_G0_START:
-                    config.LAST_G0_POSITION = last_g0_before_working
-                    print(f"[WoodWOP] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
-                    utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
+                
+                # Set start position ONLY if USE_G0=False (when USE_G0=True, start_pos already set from first G0)
+                if not config.USE_G0:
+                    # Set start position from last position before first working element
+                    # This ensures start_pos is the computed position after all G0 moves
+                    if last_pos_before_first_working is not None:
+                        start_x, start_y, start_z = last_pos_before_first_working
+                        print(f"[WoodWOP] Start position set from last G0: X={start_x:.3f}, Y={start_y:.3f}, Z={start_z:.3f}")
+                        utils.debug_log(f"[WoodWOP DEBUG] Start position set from last G0: ({start_x:.3f}, {start_y:.3f}, {start_z:.3f})")
+                    elif start_x is None:
+                        # Fallback: use current position if no G0 was processed
+                        start_x = current_x
+                        start_y = current_y
+                        start_z = current_z
+                        print(f"[WoodWOP] Start position set to current position (no preceding G0): X={start_x:.3f}, Y={start_y:.3f}, Z={start_z:.3f}")
+                        utils.debug_log(f"[WoodWOP DEBUG] Start position set to current position (no preceding G0): ({start_x:.3f}, {start_y:.3f}, {start_z:.3f})")
+                # When USE_G0=True, start_pos is already set from first G0, don't overwrite it
             # Check if there is actual movement (dX, dY, or dZ)
             # Skip if all movements are less than 0.001 (no actual movement)
             dx = abs(x - current_x)
@@ -235,15 +251,22 @@ def extract_contour_from_path(obj):
         # Arc move (G2, G3) - create arc
         elif cmd.Name in ['G2', 'G02', 'G3', 'G03']:
             # ============================================================
-            # Mark first working element (for /g0_start)
+            # Mark first working element (for start_pos)
             # ============================================================
             if not found_first_working:
                 found_first_working = True
-                # Save last G0 position to config for use in mpr_generator
-                if last_g0_before_working and config.ENABLE_G0_START:
-                    config.LAST_G0_POSITION = last_g0_before_working
-                    print(f"[WoodWOP] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
-                    utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
+                
+                # Set start position from last position before first working element
+                # This ensures start_pos is the computed position after all G0 moves
+                if last_pos_before_first_working is not None:
+                    start_x, start_y, start_z = last_pos_before_first_working
+                    print(f"[WoodWOP] Start position set from last G0: X={start_x:.3f}, Y={start_y:.3f}, Z={start_z:.3f}")
+                    utils.debug_log(f"[WoodWOP DEBUG] Start position set from last G0: ({start_x:.3f}, {start_y:.3f}, {start_z:.3f})")
+                elif start_x is None:
+                    # Fallback: use current position if no G0 was processed
+                    start_x = current_x
+                    start_y = current_y
+                    start_z = current_z
             
             i = params.get('I', 0)
             j = params.get('J', 0)
@@ -333,9 +356,15 @@ def extract_contour_from_path(obj):
                 current_z = z
 
     # Return elements and start position
-    start_pos = (start_x if start_x is not None else 0.0,
-                 start_y if start_y is not None else 0.0,
-                 start_z if start_z is not None else 0.0)
+    # Preserve string expressions (e.g., "th+z_safe") for start_z
+    if isinstance(start_z, str):
+        start_pos = (start_x if start_x is not None else 0.0,
+                     start_y if start_y is not None else 0.0,
+                     start_z)  # Keep string as-is
+    else:
+        start_pos = (start_x if start_x is not None else 0.0,
+                     start_y if start_y is not None else 0.0,
+                     start_z if start_z is not None else 0.0)
     
     # Debug: Count G0 elements
     g0_count = sum(1 for elem in elements if elem.get('move_type') == 'G0')
