@@ -165,6 +165,11 @@ def extract_contour_from_path(obj):
             
             if not should_process_g0:
                 # Skip this G0 - only update position
+                # But save position for /g0_start feature if before first working element
+                if config.ENABLE_G0_START and first_working_idx is not None and idx < first_working_idx:
+                    # Save last G0 position before first working element
+                    config.LAST_G0_POSITION = (x, y, z)
+                    utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION: ({x:.3f}, {y:.3f}, {z:.3f})")
                 current_x = x
                 current_y = y
                 current_z = z

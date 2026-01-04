@@ -417,8 +417,19 @@ def export(objectslist, filename, argstring):
         z_safe = 20.0
         try:
             if FreeCAD:
-                import FreeCADGui
-                FreeCADGui.showDialog("WoodWOP Warning", f"z_safe was increased to 20mm minimum.\nOriginal value was {original_z_safe:.3f} mm.\nUse /no_z_safe20 flag to disable this check.")
+                # Try to use Qt message box for better user experience
+                try:
+                    from . import woodwop_file_dialog
+                    woodwop_file_dialog.show_warning_message(
+                        title="WoodWOP Warning",
+                        message=f"z_safe was increased to 20mm minimum.\n\nOriginal value was {original_z_safe:.3f} mm.\nUse /no_z_safe20 flag to disable this check."
+                    )
+                except:
+                    # Fallback to FreeCAD console
+                    if hasattr(FreeCAD, 'Console'):
+                        FreeCAD.Console.PrintWarning(
+                            f"WoodWOP: z_safe was increased to 20mm minimum. Original value was {original_z_safe:.3f} mm. Use /no_z_safe20 flag to disable this check.\n"
+                        )
         except:
             pass
     
