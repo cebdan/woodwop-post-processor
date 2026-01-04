@@ -194,10 +194,11 @@ def extract_contour_from_path(obj):
             current_z = z
             continue  # Important: skip to next command
 
-        # ============================================================
-        # Mark first working element (for /g0_start)
-        # ============================================================
-        if cmd.Name in ['G1', 'G01', 'G2', 'G02', 'G3', 'G03']:
+        # Linear move (G1) - create line
+        elif cmd.Name in ['G1', 'G01']:
+            # ============================================================
+            # Mark first working element (for /g0_start)
+            # ============================================================
             if not found_first_working:
                 found_first_working = True
                 # Save last G0 position to config for use in mpr_generator
@@ -205,9 +206,6 @@ def extract_contour_from_path(obj):
                     config.LAST_G0_POSITION = last_g0_before_working
                     print(f"[WoodWOP] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
                     utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
-        
-        # Linear move (G1) - create line
-        elif cmd.Name in ['G1', 'G01']:
             # Check if there is actual movement (dX, dY, or dZ)
             # Skip if all movements are less than 0.001 (no actual movement)
             dx = abs(x - current_x)
