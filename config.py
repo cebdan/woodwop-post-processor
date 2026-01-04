@@ -101,6 +101,11 @@ ENABLE_PATH_COMMANDS_EXPORT = False
 ENABLE_PROCESSING_ANALYSIS = False
 ENABLE_NO_Z_SAFE20 = False
 USE_G0 = False  # If False: G0 chains at start/end of trajectory are skipped
+ENABLE_G0_START = False  # If True: Add G0 rapid move to start of contours
+USE_Z_PART = False  # If True: Use Z coordinates from Job without correction
+
+# G0 tracking for /g0_start feature
+LAST_G0_POSITION = None  # (x, y, z) tuple of last G0 position before first G1/G2/G3
 
 # Tracking state
 contour_counter = 1

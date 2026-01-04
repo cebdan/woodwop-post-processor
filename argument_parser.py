@@ -25,6 +25,9 @@ def parse_arguments(argstring):
     config.ENABLE_PROCESSING_ANALYSIS = False
     config.ENABLE_NO_Z_SAFE20 = False
     config.USE_G0 = False
+    config.ENABLE_G0_START = False
+    config.USE_Z_PART = False
+    config.LAST_G0_POSITION = None
     
     if not argstring:
         return {}
@@ -101,6 +104,16 @@ def parse_arguments(argstring):
             config.WORKPIECE_THICKNESS = float(value)
             print(f"[WoodWOP] WORKPIECE_THICKNESS = {config.WORKPIECE_THICKNESS}")
             
+        elif arg in ['--g0_start', '/g0_start', '/G0_start'] or normalized_arg in ['g0_start', 'G0_start']:
+            config.ENABLE_G0_START = True
+            print(f"[WoodWOP] G0 rapid move to contour start enabled via {arg} flag")
+            _update_module_flag('ENABLE_G0_START', True)
+            
+        elif arg in ['--z_part', '/z_part', '--z-part', '/z-part'] or normalized_arg in ['z_part', 'z-part']:
+            config.USE_Z_PART = True
+            print(f"[WoodWOP] Z coordinates from Job without offset correction enabled via {arg} flag")
+            _update_module_flag('USE_Z_PART', True)
+            
         elif arg in ['--g54', '--G54'] or normalized_arg.lower() == 'g54':
             # Legacy flag support - will be overridden by Job.Fixtures if present
             config.COORDINATE_SYSTEM = 'G54'
@@ -114,6 +127,8 @@ def parse_arguments(argstring):
     print(f"[WoodWOP]   ENABLE_JOB_REPORT = {config.ENABLE_JOB_REPORT}")
     print(f"[WoodWOP]   ENABLE_PATH_COMMANDS_EXPORT = {config.ENABLE_PATH_COMMANDS_EXPORT}")
     print(f"[WoodWOP]   USE_G0 = {config.USE_G0}")
+    print(f"[WoodWOP]   ENABLE_G0_START = {config.ENABLE_G0_START}")
+    print(f"[WoodWOP]   USE_Z_PART = {config.USE_Z_PART}")
     
     return {}
 
