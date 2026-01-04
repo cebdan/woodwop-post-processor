@@ -310,10 +310,10 @@ def extract_contour_from_path(obj):
                     'z': z  # Always include Z coordinate
                 }
                 elements.append(arc_elem)
-
-        current_x = x
-        current_y = y
-        current_z = z
+                # Update position after arc
+                current_x = x
+                current_y = y
+                current_z = z
 
     # Return elements and start position
     start_pos = (start_x if start_x is not None else 0.0,
