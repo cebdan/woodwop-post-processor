@@ -139,7 +139,8 @@ def extract_contour_from_path(obj):
             
             # Skip zero movements
             if dx < 0.001 and dy < 0.001 and dz < 0.001:
-                print(f"[WoodWOP] Skipping G0 at index {idx} (zero movement)")
+                print(f"[WoodWOP] G0 ПРОПУЩЕН [index {idx}]: нулевое перемещение (dx={dx:.6f}, dy={dy:.6f}, dz={dz:.6f})")
+                utils.debug_log(f"[WoodWOP DEBUG] G0 skipped at index {idx} (zero movement)")
                 current_x = x
                 current_y = y
                 current_z = z
@@ -147,32 +148,35 @@ def extract_contour_from_path(obj):
             
             # CRITICAL DECISION: Process or skip G0?
             should_process_g0 = False
+            skip_reason = None
             
             if config.USE_G0:
                 # USE_G0=True: Process ALL G0 as G1
                 should_process_g0 = True
-                print(f"[WoodWOP] USE_G0=True: Processing G0 at index {idx} as G1")
+                print(f"[WoodWOP] G0 ОБРАБОТАН [index {idx}]: USE_G0=True, все G0 обрабатываются как G1")
                 utils.debug_log(f"[WoodWOP DEBUG] USE_G0=True: Processing G0 at index {idx} as G1")
             else:
                 # USE_G0=False: Skip G0 CHAINS at start/end, process G0 BETWEEN working elements
                 if first_working_idx is not None and idx < first_working_idx:
                     # Before first working element - SKIP (WoodWOP handles approach)
                     should_process_g0 = False
-                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (before first working at {first_working_idx})")
+                    skip_reason = f"до первого рабочего элемента (первый рабочий на индексе {first_working_idx})"
+                    print(f"[WoodWOP] G0 ПРОПУЩЕН [index {idx}]: {skip_reason} - WoodWOP обрабатывает подход автоматически")
                     utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 chain at start (WoodWOP handles approach)")
                 elif last_working_idx is not None and idx > last_working_idx:
                     # After last working element - SKIP (WoodWOP handles retract)
                     should_process_g0 = False
-                    print(f"[WoodWOP] USE_G0=False: Skipping G0 at index {idx} (after last working at {last_working_idx})")
+                    skip_reason = f"после последнего рабочего элемента (последний рабочий на индексе {last_working_idx})"
+                    print(f"[WoodWOP] G0 ПРОПУЩЕН [index {idx}]: {skip_reason} - WoodWOP обрабатывает отвод автоматически")
                     utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Skipping G0 chain at end (WoodWOP handles retract)")
                 else:
                     # Between working elements OR no working elements - PROCESS as G1
                     should_process_g0 = True
                     if first_working_idx is None and last_working_idx is None:
-                        print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} (no working elements)")
+                        print(f"[WoodWOP] G0 ОБРАБОТАН [index {idx}]: нет рабочих элементов, обрабатывается как G1")
                         utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 (no working elements)")
                     else:
-                        print(f"[WoodWOP] USE_G0=False: Processing G0 at index {idx} as G1 (between working elements)")
+                        print(f"[WoodWOP] G0 ОБРАБОТАН [index {idx}]: между рабочими элементами, обрабатывается как G1")
                         utils.debug_log(f"[WoodWOP DEBUG] USE_G0=False: Processing G0 between working elements as G1")
             
             if should_process_g0:
@@ -185,8 +189,12 @@ def extract_contour_from_path(obj):
                     'move_type': 'G0'  # Store original movement type for analysis
                 }
                 elements.append(line_elem)
-                print(f"[WoodWOP] Added G0 element as G1: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, total elements={len(elements)}")
+                print(f"[WoodWOP] G0 добавлен в контур [index {idx}]: X={x:.3f}, Y={y:.3f}, Z={z:.3f}, всего элементов={len(elements)}")
                 utils.debug_log(f"[WoodWOP DEBUG] Added G0 element as G1: total elements={len(elements)}")
+            else:
+                # G0 was skipped - only position updated
+                print(f"[WoodWOP] G0 пропущен, позиция обновлена [index {idx}]: X={x:.3f}, Y={y:.3f}, Z={z:.3f} (элемент не добавлен в контур)")
+                utils.debug_log(f"[WoodWOP DEBUG] G0 skipped at index {idx}, position updated but not added to contour")
             
             # Update current position (regardless of whether G0 was processed)
             current_x = x

@@ -13,3 +13,5 @@ build/
 *.swo
 *~
 
+# Development mode marker (optional, per developer)
+.dev_mode
