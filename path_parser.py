@@ -226,6 +226,17 @@ def extract_contour_from_path(obj):
 
         # Arc move (G2, G3) - create arc
         elif cmd.Name in ['G2', 'G02', 'G3', 'G03']:
+            # ============================================================
+            # Mark first working element (for /g0_start)
+            # ============================================================
+            if not found_first_working:
+                found_first_working = True
+                # Save last G0 position to config for use in mpr_generator
+                if last_g0_before_working and config.ENABLE_G0_START:
+                    config.LAST_G0_POSITION = last_g0_before_working
+                    print(f"[WoodWOP] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
+                    utils.debug_log(f"[WoodWOP DEBUG] Saved LAST_G0_POSITION to config: {last_g0_before_working}")
+            
             i = params.get('I', 0)
             j = params.get('J', 0)
             direction = 'CW' if cmd.Name in ['G2', 'G02'] else 'CCW'
