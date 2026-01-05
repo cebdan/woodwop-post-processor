@@ -15,3 +15,6 @@ build/
 
 # Development mode marker (optional, per developer)
 .dev_mode
+
+# FreeCAD Console log file
+_freecad_console_log.txt

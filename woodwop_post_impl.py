@@ -39,6 +39,7 @@ try:
     from woodwop import gcode_generator
     from woodwop import report_generator
     from woodwop import export_handler
+    from woodwop import console_logger
 except ImportError:
     # Fallback to relative imports (when running as package)
     from . import config
@@ -51,6 +52,7 @@ except ImportError:
     from . import gcode_generator
     from . import report_generator
     from . import export_handler
+    from . import console_logger
 
 # Re-export FreeCAD interface
 TOOLTIP = config.TOOLTIP
@@ -129,6 +131,10 @@ def export(objectslist, filename, argstring):
     
     # Parse arguments FIRST to set flags before any other operations
     argument_parser.parse_arguments(argstring)
+    
+    # Initialize console logging if flag is set
+    # This must be done after argument parsing so the flag is set
+    console_logger.initialize_console_logging()
     
     # Find Job object
     job = None
@@ -382,10 +388,18 @@ def export(objectslist, filename, argstring):
                 config.COORDINATE_SYSTEM = first_fixture
     
     # Process all path objects to extract contours and operations
+    path_objects_count = 0
     for obj in objectslist:
         if not hasattr(obj, "Path"):
             continue
+        path_objects_count += 1
         job_processor.process_path_object(obj)
+    
+    print(f"[WoodWOP] Processed {path_objects_count} path objects")
+    print(f"[WoodWOP] Total contours created: {len(config.contours)}")
+    print(f"[WoodWOP] Total operations created: {len(config.operations)}")
+    for idx, op in enumerate(config.operations):
+        print(f"[WoodWOP]   Operation {idx+1}: type={op.get('type', 'unknown')}, id={op.get('id', 'unknown')}, contour={op.get('contour', 'unknown')}, tool={op.get('tool', 'unknown')}")
     
     # Calculate coordinate offset if G54 is set
     if config.COORDINATE_SYSTEM:

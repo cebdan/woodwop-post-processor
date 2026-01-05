@@ -1,0 +1,345 @@
+# Cursor AI Rules for WoodWOP Post Processor
+
+## Communication and Code Style
+- User communication: Russian language
+- Code: English language
+- Code comments: English language
+- Documentation: English language
+- Technical terms in discussions: English
+
+## Quality Over Speed
+- Think carefully before making changes
+- Read documentation before every modification
+- Describe planned changes and wait for confirmation
+- NEVER make changes without explicit user confirmation
+
+## Work Process
+
+### 1. Documentation Reading - MANDATORY
+- ALWAYS read relevant documentation before changes
+- Search for similar implementations in project
+- Study existing patterns and conventions
+
+### 2. Analysis Before Action
+- Thoroughly analyze requested change
+- Identify impact on other parts of system
+- Consider edge cases and potential issues
+- Explain WHAT and WHY you plan to change
+
+### 3. Change Confirmation - REQUIRED
+- Describe proposed changes and wait for explicit confirmation
+- DO NOT implement without user approval
+- If changes conflict with project architecture: STOP and report
+- Suggest alternatives when conflicts arise
+
+### 4. New Feature Protocol
+1. ASK: "Should I add [feature/function] to the project?"
+2. EXPLAIN: How it integrates with existing code
+3. WAIT for approval
+4. ONLY THEN write code
+
+## Code Standards
+
+### Python Style
+- Imports: standard first, then relative `from . import config`
+- Functions: `lowercase_with_underscores`, mandatory docstrings
+- Classes: `PascalCase`
+- Constants: `UPPERCASE_WITH_UNDERSCORES`
+- Variables: `lowercase_with_underscores`
+
+### Code Quality
+- Write code in English with English comments
+- Code should be concise but readable
+- Implement ONLY requested functionality - nothing extra
+- Follow experienced programmer practices
+- Strictly adhere to requirements
+
+### Documentation Format
+- Every function must have docstring in English
+- Docstring format:
+```python
+def my_function(param1, param2):
+    """
+    Short description.
+    
+    Args:
+        param1: Description
+        param2: Description
+        
+    Returns:
+        type: Description
+    """
+    pass
+```
+
+## User Frustration Detection
+- If user starts swearing: CODE QUALITY HAS SEVERELY DEGRADED
+- IMMEDIATELY STOP current approach
+- Acknowledge the issue: "Понимаю, что качество кода снизилось. Давайте пересмотрим подход."
+- Critically review recent changes
+- Ask what specifically went wrong
+- Propose better solution from scratch if needed
+- Return to "Analysis Before Action" mode with extra care
+
+## Conflict Resolution
+- If request conflicts with project structure: REPORT immediately
+- Suggest project-aligned alternatives
+- Never proceed with conflicting changes without discussion
+
+## MPR File Format - CRITICAL RULES
+
+### Line Endings (CRLF) - CRITICAL
+- MPR files ALWAYS use CRLF (`\r\n`), NOT LF (`\n`)
+- Use ONLY binary mode for writing: `open(filename, "wb")`
+- NEVER use text mode with `newline="\r\n"` - creates `\r\r\n`!
+- Use `file_writer.clean_mpr_content()` before writing
+- Verify hex dump after writing: `od -A x -t x1z -v file.mpr | head -20`
+- Check for double CR: `grep -c $\'\r\r\' file.mpr` (must be 0)
+
+### Encoding
+- MPR files use `cp1252` (Windows-1252) encoding
+- NC files use `utf-8` encoding
+- Use `errors="replace"` when encoding for safety
+
+### String Content Validation
+- ALWAYS remove `\r` and `\n` from each string before join: `item.replace('\r', '').replace('\n', '')`
+- After join check for `\r\r` and remove: `while '\r\r' in result: result = result.replace('\r\r', '\r')`
+
+## Coordinate System Rules
+
+### G54 Offset Application - CRITICAL
+- G54 offset applied ONLY to MPR format
+- G-code coordinates NEVER modified
+- Offset calculated from part minimum: `-min_x, -min_y, -min_z`
+- Flag `/z_part`: if True, Z coordinates not corrected by offset
+
+### Arc Center Calculation - CRITICAL
+- I, J are OFFSETS from previous point, NOT absolute coordinates
+- Correct: `center_x = prev_x + elem['i']`
+- Incorrect: `center_x = elem['i']`
+- Use ORIGINAL (without offset) coordinates for center calculation
+- Apply offset only to result
+
+## G0 (Rapid Move) Processing Rules
+
+### Logic
+- Flag `/use_g0`: if True, ALL G0 processed as G1
+- Flag `/use_g0`: if False (default):
+  - G0 chains BEFORE first working element (G1/G2/G3) - SKIP
+  - G0 chains AFTER last working element - SKIP
+  - G0 BETWEEN working elements - PROCESS as G1 (part of contour)
+
+### Start Position Logic
+- **WITH `/use_g0`**: 
+  - `start_pos` = initial position of FIRST G0 (before it moves)
+  - X, Y: from `current_x`, `current_y` at moment of first G0
+  - Z: expression string `"th+z_safe"` (WoodWOP calculates it)
+  - All G0 commands processed and added to contour
+- **WITHOUT `/use_g0`**:
+  - `start_pos` = last position of G0 chain before first working element
+  - X, Y, Z: from `last_pos_before_first_working`
+  - G0 chains at start/end skipped, G0 between working elements processed
+
+### Implementation Pattern
+```python
+if not config.USE_G0:
+    # First pass: find first and last working element indices
+    first_working_idx = None
+    last_working_idx = None
+    for idx, cmd in enumerate(path_commands):
+        if cmd.Name in ['G1', 'G01', 'G2', 'G02', 'G3', 'G03']:
+            if first_working_idx is None:
+                first_working_idx = idx
+            last_working_idx = idx
+    
+    # Second pass: process commands
+    for idx, cmd in enumerate(path_commands):
+        if cmd.Name in ['G0', 'G00']:
+            if idx < first_working_idx or idx > last_working_idx:
+                # Skip - update position only
+                current_x, current_y, current_z = x, y, z
+                continue
+            else:
+                # Process as G1 - add to contour
+```
+
+## FreeCAD Data Types Handling
+
+### Quantity Objects
+- Always extract Value: `value.Value if hasattr(value, 'Value') else value`
+- Recursively handle nested Quantity: use `get_float_value(value)`
+- Unit may be available: `value.Unit if hasattr(value, 'Unit') else ''`
+
+### BoundBox Objects
+- Use XLength, YLength, ZLength for dimensions
+- Use XMin, XMax, YMin, YMax, ZMin, ZMax for bounds
+- Always check attribute existence: `if hasattr(bbox, 'XLength')`
+
+### PathUtils
+- Use `PathUtils.getPathWithPlacement(obj).Commands` to get commands with transformation
+- Fallback to `obj.Path.Commands` if PathUtils unavailable
+
+## Modular Architecture Rules
+
+### Module Organization
+- Each module responsible for one task
+- Minimal dependencies between modules
+- All imports relative: `from . import config`
+- Global state only in `config.py`
+
+### Import Pattern
+```python
+# At the beginning of each module
+from . import config
+from . import utils
+
+# For specific functions
+from . import geometry  # only if geometric calculations needed
+```
+
+### Module Responsibilities
+- `config.py` - global variables and constants
+- `utils.py` - helper functions (fmt, debug_log)
+- `argument_parser.py` - argument parsing
+- `path_parser.py` - contour extraction from Path
+- `geometry.py` - geometric calculations
+- `job_processor.py` - Job object processing
+- `mpr_generator.py` - MPR content generation
+- `gcode_generator.py` - G-code generation
+- `report_generator.py` - report generation
+- `export_handler.py` - Path commands export
+- `file_writer.py` - file writing with CRLF
+
+## Arguments Processing Rules
+
+### Slash Format Only
+- ONLY `/flag` or `/flag=value` format supported
+- Format `--flag` NOT supported (deprecated)
+- Strip `/` when parsing: `normalized_arg = arg.lstrip('/')`
+
+### Flag Processing Pattern
+```python
+if normalized_arg == 'my-flag':
+    config.MY_FLAG = True
+    print(f"[WoodWOP] My flag enabled via {arg} flag")
+    _update_module_flag('MY_FLAG', True)
+```
+
+### Flag Naming
+- Use hyphens: `/my-flag`, `/no-comments`
+- For values: `/precision=3`, `/workpiece-length=800`
+
+## Error Handling and Debugging Rules
+
+### Logging Pattern
+```python
+# Debug log (only if /log enabled)
+utils.debug_log("Debug message")
+
+# Always print
+print(f"[WoodWOP] Important message")
+
+# FreeCAD console (if available)
+try:
+    import FreeCAD
+    FreeCAD.Console.PrintMessage("Message\n")
+    FreeCAD.Console.PrintWarning("Warning\n")
+    FreeCAD.Console.PrintError("Error\n")
+except:
+    pass
+```
+
+### Error Handling Pattern
+```python
+try:
+    # Operation
+    result = operation()
+except Exception as e:
+    print(f"[WoodWOP ERROR] Operation failed: {e}")
+    import traceback
+    print(f"[WoodWOP ERROR] Traceback:\n{traceback.format_exc()}")
+    # Fallback or raise
+```
+
+### Critical Checks
+- Always check data types before operations
+- Use `isinstance(value, str)` for strings
+- Check for None: `if value is not None:`
+- Check list length: `if len(items) > 0:`
+- **CRITICAL**: Skip string expressions in geometry calculations (e.g., `"th+z_safe"`)
+
+## Dev Mode and Cache Rules
+
+### Auto Cache Cleaning
+- Create `.dev_mode` file in module root for auto cache cleaning
+- Or set `WOODWOP_DEV_MODE=1` environment variable
+- On module load automatically removes `.pyc` and `__pycache__`
+- Removes modules from `sys.modules` (except `woodwop_post`)
+
+### Cache Cleaning Pattern
+```python
+# In __init__.py or woodwop_post.py
+_DEV_MODE = os.environ.get('WOODWOP_DEV_MODE', '0') == '1' or os.path.exists(_dev_mode_file)
+if _DEV_MODE:
+    # Clean cache once per session
+    _cache_cleaned_flag = f"_woodwop_cache_cleaned_{_current_dir}"
+    if not hasattr(sys, _cache_cleaned_flag):
+        # Clean .pyc and __pycache__
+        # Remove modules from sys.modules
+        setattr(sys, _cache_cleaned_flag, True)
+```
+
+## Tool Routing Logic
+
+### WoodWOP Macros vs FreeCAD G-code
+- Tools 1-400: WoodWOP MPR format
+- Tools with D prefix (D100, D200): WoodWOP macros
+- Tools 60-75: WoodWOP special macros
+- Tools 400-500: WoodWOP custom macros
+- Tools 500-600: FreeCAD G-code
+
+### Pattern
+```python
+if (tool_name.startswith('D') or 
+    60 <= tool_num <= 75 or 
+    400 <= tool_num <= 500):
+    # Use WoodWOP MPR format
+elif 500 <= tool_num <= 600:
+    # Use FreeCAD G-code
+```
+
+## Critical Reminders
+
+### CRLF Line Endings
+- **ALWAYS** use binary mode for MPR files
+- **NEVER** use text mode with newline parameter
+- **VERIFY** hex dump after every change in file_writer.py
+
+### Type Safety
+- **ALWAYS** check `isinstance(content, str)` before join
+- **ALWAYS** convert list to string if list detected
+- **ALWAYS** verify result after operations
+- **ALWAYS** check `isinstance(value, (int, float))` before numeric comparisons
+- **SKIP** string expressions in geometry calculations
+
+### G54 Coordinates
+- **ONLY MPR** format receives G54 offset
+- **G-code NEVER** modified
+- **Arc centers** calculated from ORIGINAL coordinates
+
+### Modularity
+- **ONE** module = **ONE** task
+- **MINIMUM** dependencies between modules
+- **ALL** global state in `config.py`
+
+## Before Committing Checklist
+
+- [ ] Code follows style guidelines
+- [ ] All functions have docstrings
+- [ ] Comments added to complex logic
+- [ ] Tested with `.dev_mode`
+- [ ] Tested without `.dev_mode`
+- [ ] Verified hex dump of MPR file (no `0d 0d 0a`)
+- [ ] Updated `README.md` if needed
+- [ ] Updated `TOOLTIP_ARGS` if flag added
+- [ ] Git commit message describes changes

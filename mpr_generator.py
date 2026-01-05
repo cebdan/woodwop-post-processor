@@ -115,6 +115,45 @@ def generate_mpr_content(z_safe=20.0):
     output.append(f'_RY={utils.fmt6(config.STOCK_EXTENT_Y_NEG + config.WORKPIECE_WIDTH + config.STOCK_EXTENT_Y_POS)}')
     output.append('')
 
+    # Variables and workpiece section
+    # Variables in [001 section use standard precision (3 decimal places)
+    # CRITICAL: [001 section must come BEFORE contours (]1, ]2, etc.)
+    output.append('[001')
+    output.append(f'l="{utils.fmt(config.WORKPIECE_LENGTH)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="length in X"')
+    output.append(f'w="{utils.fmt(config.WORKPIECE_WIDTH)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="width in Y"')
+    output.append(f'th="{utils.fmt(config.WORKPIECE_THICKNESS)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="thickness in Z"')
+    output.append(f'x="{utils.fmt(config.PROGRAM_OFFSET_X)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="offset programs in x"')
+    output.append(f'y="{utils.fmt(config.PROGRAM_OFFSET_Y)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="offset programs in y"')
+    output.append(f'z="{utils.fmt(config.PROGRAM_OFFSET_Z)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="z offset"')
+    output.append(f'l_off="{utils.fmt(config.STOCK_EXTENT_X_NEG)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="left offset"')
+    output.append(f'f_off="{utils.fmt(config.STOCK_EXTENT_Y_NEG)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="front offset"')
+    output.append(f'r_oz="{utils.fmt(config.STOCK_EXTENT_X_POS)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="right oversize"')
+    output.append(f'b_oz="{utils.fmt(config.STOCK_EXTENT_Y_POS)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="back oversize"')
+    output.append(f'z_safe="{utils.fmt(z_safe)}"')
+    if config.OUTPUT_COMMENTS:
+        output.append('KM="clearance height"')
+    output.append('')
+
     # Contour elements section
     for contour in config.contours:
         output.append(f']{contour["id"]}')
@@ -346,44 +385,6 @@ def generate_mpr_content(z_safe=20.0):
 
         output.append('')
 
-    # Variables and workpiece section
-    # Variables in [001 section use standard precision (3 decimal places)
-    output.append('[001')
-    output.append(f'l="{utils.fmt(config.WORKPIECE_LENGTH)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="length in X"')
-    output.append(f'w="{utils.fmt(config.WORKPIECE_WIDTH)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="width in Y"')
-    output.append(f'th="{utils.fmt(config.WORKPIECE_THICKNESS)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="thickness in Z"')
-    output.append(f'x="{utils.fmt(config.PROGRAM_OFFSET_X)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="offset programs in x"')
-    output.append(f'y="{utils.fmt(config.PROGRAM_OFFSET_Y)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="offset programs in y"')
-    output.append(f'z="{utils.fmt(config.PROGRAM_OFFSET_Z)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="z offset"')
-    output.append(f'l_off="{utils.fmt(config.STOCK_EXTENT_X_NEG)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="left offset"')
-    output.append(f'f_off="{utils.fmt(config.STOCK_EXTENT_Y_NEG)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="front offset"')
-    output.append(f'r_oz="{utils.fmt(config.STOCK_EXTENT_X_POS)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="right oversize"')
-    output.append(f'b_oz="{utils.fmt(config.STOCK_EXTENT_Y_POS)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="back oversize"')
-    output.append(f'z_safe="{utils.fmt(z_safe)}"')
-    if config.OUTPUT_COMMENTS:
-        output.append('KM="clearance height"')
-    output.append('')
-
     output.append(f'<100 \\WerkStck\\')
     output.append(f'LA="l"')
     output.append(f'BR="w"')
@@ -409,7 +410,9 @@ def generate_mpr_content(z_safe=20.0):
         output.append('')
 
     # Operations section
-    contourfraesen_counter = 0
+    # ORI counter: starts from 1 (first comment), then increments for each operation comment and operation
+    # First comment has ORI="1", operation comment has ORI="2", operation has ORI="3" for first operation
+    operation_ori_counter = 1  # Already used for first comment (if OUTPUT_COMMENTS)
     
     for op in config.operations:
         if op['type'] == 'BohrVert':
@@ -425,22 +428,33 @@ def generate_mpr_content(z_safe=20.0):
             output.append('')
 
         elif op['type'] == 'Contourfraesen':
-            contourfraesen_counter += 1
-            
             contour = None
             for c in config.contours:
                 if c['id'] == op['contour']:
                     contour = c
                     break
             
-            last_element_idx = 0
+            # EE: last element number in MPR format (1-based, $E1, $E2, ..., $E14)
+            # Elements are numbered from $E1 to $E{len(elements)} in MPR
+            # So last element number = len(elements) (not len-1, because numbering starts from 1)
+            last_element_num = 0
             if contour and contour['elements']:
-                last_element_idx = len(contour['elements']) - 1
+                last_element_num = len(contour['elements'])  # $E1 to $E{len}, so last is len
             
             rk_value = geometry.determine_tool_compensation(op['contour'])
             
-            output.append(f'<{op["id"]} \\Contourfraesen\\')
-            # EA: start at $E1 (index 0)
+            # Add comment before operation: <101 \Kommentar\ with KAT and MNM
+            operation_ori_counter += 1  # Increment for comment
+            output.append('<101 \\Kommentar\\')
+            output.append('KAT="Fräsen"')
+            output.append(f'MNM="Vertical trimming"')
+            output.append(f'ORI="{operation_ori_counter}"')
+            output.append('')
+            
+            # Operation ID: 105 for Konturfraesen (not 101)
+            operation_ori_counter += 1  # Increment for operation
+            output.append(f'<105 \\Konturfraesen\\')
+            # EA: start at $E1 (index 0 in list, but element number 1 in MPR)
             output.append(f'EA="{op["contour"]}:0"')
             output.append(f'MDA="SEN"')
             output.append(f'STUFEN="0"')
@@ -451,7 +465,7 @@ def generate_mpr_content(z_safe=20.0):
             output.append(f'ZSTART="0"')
             output.append(f'ANZZST="0"')
             output.append(f'RK="{rk_value}"')
-            output.append(f'EE="{op["contour"]}:{last_element_idx}"')
+            output.append(f'EE="{op["contour"]}:{last_element_num}"')
             output.append(f'MDE="SEN_AB"')
             output.append(f'EM="0"')
             output.append(f'RI="1"')
@@ -480,7 +494,7 @@ def generate_mpr_content(z_safe=20.0):
             output.append(f'RWID="0"')
             output.append(f'KAT="Fräsen"')
             output.append(f'MNM="Vertical trimming"')
-            output.append(f'ORI="{contourfraesen_counter}"')
+            output.append(f'ORI="{operation_ori_counter}"')
             output.append(f'MX="0"')
             output.append(f'MY="0"')
             output.append(f'MZ="0"')

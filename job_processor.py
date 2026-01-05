@@ -26,24 +26,38 @@ def process_path_object(obj):
 
     if op_type == 'profile' or op_type == 'contour':
         # Create contour and routing operation
-        contour_id = config.contour_counter
-        config.contour_counter += 1
-
+        obj_label = obj.Label if hasattr(obj, 'Label') else f'Object{config.contour_counter}'
+        print(f"[WoodWOP] Processing {op_type} operation: {obj_label}")
+        
         contour_elements, start_pos = path_parser.extract_contour_from_path(obj)
+        print(f"[WoodWOP] Extracted {len(contour_elements)} elements from {obj_label}")
+        
+        # Only create contour and increment counter if elements were extracted
         if contour_elements:
+            contour_id = config.contour_counter
+            config.contour_counter += 1
+            
             config.contours.append({
                 'id': contour_id,
                 'elements': contour_elements,
                 'start_pos': start_pos,
-                'label': obj.Label if hasattr(obj, 'Label') else f'Contour{contour_id}'
+                'label': obj_label
             })
+            print(f"[WoodWOP] Contour {contour_id} added: {len(contour_elements)} elements")
 
             # Create Contourfraesen operation
             tool_number = get_tool_number(obj)
             if tool_number:
                 config.tools_used.add(tool_number)
+                print(f"[WoodWOP] Tool number: {tool_number}")
+            else:
+                print(f"[WoodWOP] WARNING: No tool number found for {obj_label}, using default tool=1")
 
-            config.operations.append(create_contour_milling(obj, contour_id, tool_number))
+            operation = create_contour_milling(obj, contour_id, tool_number)
+            config.operations.append(operation)
+            print(f"[WoodWOP] Contourfraesen operation created: contour={contour_id}, tool={operation['tool']}, last_element={operation['last_element']}")
+        else:
+            print(f"[WoodWOP] WARNING: No contour elements extracted from {obj_label}, operation NOT created!")
 
     elif op_type == 'drilling':
         # Create drilling operations
@@ -56,11 +70,13 @@ def process_path_object(obj):
 
     elif op_type == 'pocket':
         # Create contour for pocket and pocket operation
-        contour_id = config.contour_counter
-        config.contour_counter += 1
-
         contour_elements, start_pos = path_parser.extract_contour_from_path(obj)
+        
+        # Only create contour and increment counter if elements were extracted
         if contour_elements:
+            contour_id = config.contour_counter
+            config.contour_counter += 1
+            
             config.contours.append({
                 'id': contour_id,
                 'elements': contour_elements,
@@ -174,7 +190,7 @@ def create_contour_milling(obj, contour_id, tool_number):
     
     return {
         'type': 'Contourfraesen',
-        'id': 101,
+        'id': 105,  # Operation ID 105 for Konturfraesen
         'contour': contour_id,
         'tool': tool_number if tool_number else 1,
         'rk': rk_value,

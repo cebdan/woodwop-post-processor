@@ -60,6 +60,11 @@ All flags must use slash format (/flag). Double-dash format (--flag) is not supp
     Commands: [G0, G0, G1, G0, G2, G0, G0]
     - Without flag: G0 at start/end skipped, G0 between G1/G2 processed
     - With flag: ALL G0 processed as G1
+/f_con: Enable FreeCAD Console logging to file
+  When set, all FreeCAD Console output (PrintMessage, PrintWarning, PrintError)
+  will be logged to _freecad_console_log.txt in the module root directory.
+  File is always overwritten (mode 'w') to show only the latest session output.
+  Useful during development to see console messages.
 '''
 
 # File extension for WoodWOP MPR files
@@ -104,6 +109,7 @@ ENABLE_PROCESSING_ANALYSIS = False
 ENABLE_NO_Z_SAFE20 = False
 USE_G0 = False  # If False: G0 chains at start/end of trajectory are skipped
 USE_Z_PART = False  # If True: Use Z coordinates from Job without correction
+ENABLE_FREECAD_CONSOLE_LOG = False  # If True: log all FreeCAD Console output to file
 
 # Tracking state
 contour_counter = 1

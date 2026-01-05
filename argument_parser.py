@@ -74,6 +74,11 @@ def parse_arguments(argstring):
             print(f"[WoodWOP] G0 processing enabled via {arg} flag (G0 will be treated as G1)")
             _update_module_flag('USE_G0', True)
             
+        elif normalized_arg == 'f_con':
+            config.ENABLE_FREECAD_CONSOLE_LOG = True
+            print(f"[WoodWOP] FreeCAD Console logging enabled via {arg} flag")
+            _update_module_flag('ENABLE_FREECAD_CONSOLE_LOG', True)
+            
         elif normalized_arg in ['p_a', 'p-a']:
             config.ENABLE_PROCESSING_ANALYSIS = True
             print(f"[WoodWOP] Processing analysis export enabled via {arg} flag")
@@ -153,6 +158,7 @@ def parse_arguments(argstring):
     print(f"[WoodWOP]   ENABLE_VERBOSE_LOGGING = {config.ENABLE_VERBOSE_LOGGING}")
     print(f"[WoodWOP]   ENABLE_JOB_REPORT = {config.ENABLE_JOB_REPORT}")
     print(f"[WoodWOP]   ENABLE_PATH_COMMANDS_EXPORT = {config.ENABLE_PATH_COMMANDS_EXPORT}")
+    print(f"[WoodWOP]   ENABLE_FREECAD_CONSOLE_LOG = {config.ENABLE_FREECAD_CONSOLE_LOG}")
     print(f"[WoodWOP]   USE_G0 = {config.USE_G0}")
     print(f"[WoodWOP]   USE_Z_PART = {config.USE_Z_PART}")
     
@@ -160,11 +166,21 @@ def parse_arguments(argstring):
 
 
 def _update_module_flag(flag_name, value):
-    """Update flag in current module for FreeCAD compatibility."""
+    """Update flag in current module and config module for FreeCAD compatibility."""
     import sys
+    # Update in current module (argument_parser)
     current_module = sys.modules.get(__name__)
     if current_module:
         setattr(current_module, flag_name, value)
+    
+    # Also update in config module to ensure consistency
+    config_module = sys.modules.get('woodwop.config')
+    if config_module:
+        setattr(config_module, flag_name, value)
+    # Also try relative import path
+    config_module = sys.modules.get(config.__name__)
+    if config_module:
+        setattr(config_module, flag_name, value)
 
 
 
